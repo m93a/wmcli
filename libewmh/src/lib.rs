@@ -24,14 +24,12 @@ pub use wm::WindowManager;
 /// ```
 /// use libewmh::prelude::*;
 /// ```
-pub mod prelude
-{
+pub mod prelude {
     pub use crate::*;
 }
 
 /// Window option provides an ergonomic way to manipulate a window
-pub struct WinOpt
-{
+pub struct WinOpt {
     win: Option<u32>,
     w: Option<u32>,
     h: Option<u32>,
@@ -41,8 +39,7 @@ pub struct WinOpt
     pos: Option<WinPosition>,
 }
 
-impl WinOpt
-{
+impl WinOpt {
     /// Create a new window option with the given optional window.
     ///
     /// ### Arguments
@@ -53,8 +50,7 @@ impl WinOpt
     /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None);
     /// ```
-    pub fn new(win: Option<u32>) -> Self
-    {
+    pub fn new(win: Option<u32>) -> Self {
         Self {
             win,
             w: Default::default(),
@@ -78,8 +74,7 @@ impl WinOpt
     /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None).size(500, 500);
     /// ```
-    pub fn size(mut self, w: u32, h: u32) -> Self
-    {
+    pub fn size(mut self, w: u32, h: u32) -> Self {
         self.w = Some(w);
         self.h = Some(h);
         self.shape = None;
@@ -98,8 +93,7 @@ impl WinOpt
     /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None).location(0, 0);
     /// ```
-    pub fn location(mut self, x: u32, y: u32) -> Self
-    {
+    pub fn location(mut self, x: u32, y: u32) -> Self {
         self.x = Some(x);
         self.y = Some(y);
         self.pos = None;
@@ -117,8 +111,7 @@ impl WinOpt
     /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None).shape(WinShape::Large);
     /// ```
-    pub fn shape(mut self, shape: WinShape) -> Self
-    {
+    pub fn shape(mut self, shape: WinShape) -> Self {
         if self.w.is_none() && self.h.is_none() {
             self.shape = Some(shape);
         }
@@ -136,8 +129,7 @@ impl WinOpt
     /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None).pos(WinPosition::Right);
     /// ```
-    pub fn pos(mut self, pos: WinPosition) -> Self
-    {
+    pub fn pos(mut self, pos: WinPosition) -> Self {
         if self.x.is_none() && self.y.is_none() {
             self.pos = Some(pos);
         }
@@ -145,8 +137,7 @@ impl WinOpt
     }
 
     // Check if any options are set
-    fn any(&self) -> bool
-    {
+    fn any(&self) -> bool {
         self.w.is_some()
             || self.h.is_some()
             || self.x.is_some()
@@ -162,8 +153,7 @@ impl WinOpt
     /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None).shape(WinShape::Large).pos(WinPosition::Right);
     /// ```
-    pub fn place(self) -> WindowManagerResult<()>
-    {
+    pub fn place(self) -> WindowManagerResult<()> {
         let execute = self.any();
         let wmcli = WindowManager::connect()?;
 
@@ -217,8 +207,7 @@ impl WinOpt
 /// use libewmh::prelude::*;
 /// libewmh::info(None).unwrap();
 /// ```
-pub fn info(win: Option<u32>) -> WindowManagerResult<()>
-{
+pub fn info(win: Option<u32>) -> WindowManagerResult<()> {
     let wmcli = WindowManager::connect()?;
     let (_, wm_name) = wmcli.winmgr()?;
     let win = win.unwrap_or(wmcli.active_win()?);
@@ -249,8 +238,7 @@ pub fn info(win: Option<u32>) -> WindowManagerResult<()>
 /// use libewmh::prelude::*;
 /// libewmh::list().unwrap();
 /// ```
-pub fn list(all: bool) -> WindowManagerResult<()>
-{
+pub fn list(all: bool) -> WindowManagerResult<()> {
     let wmcli = WindowManager::connect()?;
     print_win_header();
     for win in wmcli.windows(all)? {
@@ -259,20 +247,18 @@ pub fn list(all: bool) -> WindowManagerResult<()>
     Ok(())
 }
 
-fn print_win_header()
-{
+fn print_win_header() {
     println!(
         "{:<8} {:<3} {:<6} {:<5} {:<5} {:<4} {:<4} {:<8} {:<7} {:<18} {:<18} {}",
         "ID", "DSK", "PID", "X", "Y", "W", "H", "BORDERS", "TYPE", "STATE", "CLASS", "NAME"
     );
 }
 
-fn print_win_details(wmcli: &WindowManager, win: u32) -> WindowManagerResult<()>
-{
+fn print_win_details(wmcli: &WindowManager, win: u32) -> WindowManagerResult<()> {
     let pid = wmcli.win_pid(win).unwrap_or(-1);
     let desktop = wmcli.win_desktop(win).unwrap_or(-1);
-    let typ = wmcli.win_type(win).unwrap_or(WinType::Invalid);
-    let states = wmcli.win_state(win).unwrap_or(vec![WinState::Invalid]);
+    let typ = wmcli.win_type(win);
+    let states = wmcli.win_state(win);
     let (x, y, w, h) = wmcli.win_geometry(win)?;
     let (l, r, t, b) = wmcli.win_borders(win).unwrap_or((0, 0, 0, 0));
     let class = wmcli.win_class(win).unwrap_or("".to_owned());
@@ -287,8 +273,14 @@ fn print_win_details(wmcli: &WindowManager, win: u32) -> WindowManagerResult<()>
         format!("{:<4}", w),
         format!("{:<4}", h),
         format!("{},{},{},{}", l, r, t, b),
-        typ.to_string(),
-        format!("{:?}", states),
+        match typ {
+            Ok(x) => x.to_string(),
+            Err(_) => "Error".to_owned(),
+        },
+        match states {
+            Ok(x) => format!("{:?}", x),
+            _ => format!("{:?}", states),
+        },
         class,
         name
     );
@@ -298,8 +290,7 @@ fn print_win_details(wmcli: &WindowManager, win: u32) -> WindowManagerResult<()>
 /// Move the given window or active window if not given without changing its size
 fn move_win(
     wmcli: &WindowManager, win: u32, w: u32, h: u32, bw: u32, bh: u32, pos: WinPosition,
-) -> WindowManagerResult<(Option<u32>, Option<u32>)>
-{
+) -> WindowManagerResult<(Option<u32>, Option<u32>)> {
     wmcli.unmaximize_win(win)?;
 
     // Pre-calculations
@@ -329,8 +320,7 @@ fn move_win(
 /// Shape the given window or active window if not given without moving it.
 fn shape_win(
     wmcli: &WindowManager, win: u32, w: u32, h: u32, bw: u32, bh: u32, shape: WinShape,
-) -> WindowManagerResult<(Option<u32>, Option<u32>, Option<u32>)>
-{
+) -> WindowManagerResult<(Option<u32>, Option<u32>, Option<u32>)> {
     // Notes
     // * return values from this func should not include the border sizes
     Ok(match shape {
@@ -419,11 +409,9 @@ fn shape_win(
 }
 
 #[cfg(test)]
-mod tests
-{
+mod tests {
     #[test]
-    fn it_works()
-    {
+    fn it_works() {
         assert_eq!(2 + 2, 4);
     }
 }

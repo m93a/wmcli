@@ -8,27 +8,22 @@ use crate::{wm::AtomCollection, WindowManagerError, WindowManagerResult};
 /// Gravity is defined as the lower byte of the move resize flags 32bit value
 /// <https://tronche.com/gui/x/xlib/window/attributes/gravity.html>
 #[derive(Debug, Clone, PartialEq)]
-pub enum WinGravity
-{
+pub enum WinGravity {
     Center,
     None,
 }
 
 // Implement format! support
-impl fmt::Display for WinGravity
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
+impl fmt::Display for WinGravity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             _ => write!(f, "{}", format!("{:?}", self).to_lowercase()),
         }
     }
 }
 
-impl From<u32> for WinGravity
-{
-    fn from(val: u32) -> Self
-    {
+impl From<u32> for WinGravity {
+    fn from(val: u32) -> Self {
         match val {
             5 => WinGravity::Center,
             _ => WinGravity::None,
@@ -36,10 +31,8 @@ impl From<u32> for WinGravity
     }
 }
 
-impl From<WinGravity> for u32
-{
-    fn from(val: WinGravity) -> Self
-    {
+impl From<WinGravity> for u32 {
+    fn from(val: WinGravity) -> Self {
         match val {
             WinGravity::Center => 5,
             _ => 0,
@@ -50,8 +43,7 @@ impl From<WinGravity> for u32
 /// WinPosition provides a number of pre-defined positions on the screen to quickly and easily
 /// move the window to taking into account borders and taskbars automatically.
 #[derive(Debug, Clone, PartialEq)]
-pub enum WinPosition
-{
+pub enum WinPosition {
     Center,
     Left,
     Right,
@@ -68,10 +60,8 @@ pub enum WinPosition
 }
 
 // Implement format! support
-impl fmt::Display for WinPosition
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
+impl fmt::Display for WinPosition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             _ => write!(f, "{}", format!("{:?}", self).to_lowercase()),
         }
@@ -79,12 +69,10 @@ impl fmt::Display for WinPosition
 }
 
 // Convert from &str to Postiion
-impl convert::TryFrom<&str> for WinPosition
-{
+impl convert::TryFrom<&str> for WinPosition {
     type Error = WindowManagerError;
 
-    fn try_from(val: &str) -> Result<Self, Self::Error>
-    {
+    fn try_from(val: &str) -> Result<Self, Self::Error> {
         match val.to_lowercase().as_ref() {
             "center" => Ok(WinPosition::Center),
             "left" => Ok(WinPosition::Left),
@@ -105,12 +93,10 @@ impl convert::TryFrom<&str> for WinPosition
 }
 
 // Convert from String to Postiion
-impl convert::TryFrom<String> for WinPosition
-{
+impl convert::TryFrom<String> for WinPosition {
     type Error = WindowManagerError;
 
-    fn try_from(val: String) -> Result<Self, Self::Error>
-    {
+    fn try_from(val: String) -> Result<Self, Self::Error> {
         WinPosition::try_from(val.as_str())
     }
 }
@@ -118,8 +104,7 @@ impl convert::TryFrom<String> for WinPosition
 /// WinShape provides a number of pre-defined shapes to manipulate the window into, taking into
 /// account borders and taskbars automatically.
 #[derive(Debug, Clone, PartialEq)]
-pub enum WinShape
-{
+pub enum WinShape {
     Grow,
     Max,
     Halfw,
@@ -133,10 +118,8 @@ pub enum WinShape
 }
 
 // Implement format! support
-impl fmt::Display for WinShape
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
+impl fmt::Display for WinShape {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             _ => write!(f, "{}", format!("{:?}", self).to_lowercase()),
         }
@@ -144,12 +127,10 @@ impl fmt::Display for WinShape
 }
 
 // Convert from &str to Shape
-impl convert::TryFrom<&str> for WinShape
-{
+impl convert::TryFrom<&str> for WinShape {
     type Error = WindowManagerError;
 
-    fn try_from(val: &str) -> Result<Self, Self::Error>
-    {
+    fn try_from(val: &str) -> Result<Self, Self::Error> {
         match val.to_lowercase().as_ref() {
             "grow" => Ok(WinShape::Grow),
             "max" => Ok(WinShape::Max),
@@ -166,12 +147,10 @@ impl convert::TryFrom<&str> for WinShape
 }
 
 // Convert from a String to a Shape
-impl convert::TryFrom<String> for WinShape
-{
+impl convert::TryFrom<String> for WinShape {
     type Error = WindowManagerError;
 
-    fn try_from(val: String) -> Result<Self, Self::Error>
-    {
+    fn try_from(val: String) -> Result<Self, Self::Error> {
         WinShape::try_from(val.as_str())
     }
 }
@@ -179,18 +158,15 @@ impl convert::TryFrom<String> for WinShape
 /// WinClass provides a easy way to identify the different window class types
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
-pub enum WinClass
-{
+pub enum WinClass {
     CopyFromParent,
     InputOnly,
     InputOutput,
 }
 
 // Convert from u32 to Class
-impl WinClass
-{
-    pub fn from(val: u32) -> WindowManagerResult<WinClass>
-    {
+impl WinClass {
+    pub fn from(val: u32) -> WindowManagerResult<WinClass> {
         if val == xproto::WindowClass::COPY_FROM_PARENT.into() {
             Ok(WinClass::CopyFromParent)
         } else if val == xproto::WindowClass::INPUT_ONLY.into() {
@@ -204,10 +180,8 @@ impl WinClass
 }
 
 // Implement format! support
-impl fmt::Display for WinClass
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
+impl fmt::Display for WinClass {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             _ => write!(f, "{}", format!("{:?}", self).to_lowercase()),
         }
@@ -217,18 +191,15 @@ impl fmt::Display for WinClass
 /// WinMap provides an easy way to identify the differnt window map values
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
-pub enum WinMap
-{
+pub enum WinMap {
     Unmapped,
     Unviewable,
     Viewable,
 }
 
 // Convert from u32 to state
-impl WinMap
-{
-    pub fn from(val: u32) -> WindowManagerResult<WinMap>
-    {
+impl WinMap {
+    pub fn from(val: u32) -> WindowManagerResult<WinMap> {
         if val == xproto::MapState::UNMAPPED.into() {
             Ok(WinMap::Unmapped)
         } else if val == xproto::MapState::UNVIEWABLE.into() {
@@ -242,10 +213,8 @@ impl WinMap
 }
 
 // Implement format! support
-impl fmt::Display for WinMap
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
+impl fmt::Display for WinMap {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             _ => write!(f, "{}", format!("{:?}", self).to_lowercase()),
         }
@@ -255,8 +224,7 @@ impl fmt::Display for WinMap
 /// WinState provides an easy way to identify the different window states
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
-pub enum WinState
-{
+pub enum WinState {
     Above,
     Below,
     DemandsAttention,
@@ -269,51 +237,35 @@ pub enum WinState
     Shaded,
     SkipPager,
     SkipTaskbar,
-    Invalid, // made up value to track missing
+    Other(u32),
 }
 
 // Convert from u32 to State
-impl WinState
-{
-    pub fn from(atoms: &AtomCollection, val: u32) -> WindowManagerResult<WinState>
-    {
-        if val == atoms._NET_WM_STATE_ABOVE {
-            Ok(WinState::Above)
-        } else if val == atoms._NET_WM_STATE_BELOW {
-            Ok(WinState::Below)
-        } else if val == atoms._NET_WM_STATE_DEMANDS_ATTENTION {
-            Ok(WinState::DemandsAttention)
-        } else if val == atoms._NET_WM_STATE_FOCUSED {
-            Ok(WinState::Focused)
-        } else if val == atoms._NET_WM_STATE_FULLSCREEN {
-            Ok(WinState::Fullscreen)
-        } else if val == atoms._NET_WM_STATE_HIDDEN {
-            Ok(WinState::Hidden)
-        } else if val == atoms._NET_WM_STATE_MAXIMIZED_VERT {
-            Ok(WinState::MaxVert)
-        } else if val == atoms._NET_WM_STATE_MAXIMIZED_HORZ {
-            Ok(WinState::MaxHorz)
-        } else if val == atoms._NET_WM_STATE_MODAL {
-            Ok(WinState::Modal)
-        } else if val == atoms._NET_WM_STATE_SHADED {
-            Ok(WinState::Shaded)
-        } else if val == atoms._NET_WM_STATE_SKIP_PAGER {
-            Ok(WinState::SkipPager)
-        } else if val == atoms._NET_WM_STATE_SKIP_TASKBAR {
-            Ok(WinState::SkipTaskbar)
-        } else {
-            Err(WindowManagerError::InvalidWinState(val).into())
+impl WinState {
+    pub fn from(atoms: &AtomCollection, val: u32) -> WinState {
+        match val {
+            _ if val == atoms._NET_WM_STATE_ABOVE => WinState::Above,
+            _ if val == atoms._NET_WM_STATE_BELOW => WinState::Below,
+            _ if val == atoms._NET_WM_STATE_DEMANDS_ATTENTION => WinState::DemandsAttention,
+            _ if val == atoms._NET_WM_STATE_FOCUSED => WinState::Focused,
+            _ if val == atoms._NET_WM_STATE_FULLSCREEN => WinState::Fullscreen,
+            _ if val == atoms._NET_WM_STATE_HIDDEN => WinState::Hidden,
+            _ if val == atoms._NET_WM_STATE_MAXIMIZED_VERT => WinState::MaxVert,
+            _ if val == atoms._NET_WM_STATE_MAXIMIZED_HORZ => WinState::MaxHorz,
+            _ if val == atoms._NET_WM_STATE_MODAL => WinState::Modal,
+            _ if val == atoms._NET_WM_STATE_SHADED => WinState::Shaded,
+            _ if val == atoms._NET_WM_STATE_SKIP_PAGER => WinState::SkipPager,
+            _ if val == atoms._NET_WM_STATE_SKIP_TASKBAR => WinState::SkipTaskbar,
+            _ => WinState::Other(val),
         }
     }
 }
 
 // Implement format! support
-impl fmt::Display for WinState
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
+impl fmt::Display for WinState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            WinState::Invalid => write!(f, ""),
+            WinState::Other(_) => write!(f, ""),
             _ => write!(f, "{}", format!("{:?}", self).to_lowercase()),
         }
     }
@@ -322,8 +274,7 @@ impl fmt::Display for WinState
 /// WinType provides an easy way to identify the different window types
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
-pub enum WinType
-{
+pub enum WinType {
     Combo,
     Desktop,
     Dialog,
@@ -338,55 +289,37 @@ pub enum WinType
     Toolbar,
     ToolTip,
     Utility,
-    Invalid, // made up value to track missing
+    Other(u32),
 }
 
 // Convert from u32 to Type
-impl WinType
-{
-    pub fn from(atoms: &AtomCollection, val: u32) -> WindowManagerResult<WinType>
-    {
-        if val == atoms._NET_WM_WINDOW_TYPE_COMBO {
-            Ok(WinType::Combo)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_DESKTOP {
-            Ok(WinType::Desktop)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_DIALOG {
-            Ok(WinType::Dialog)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_DND {
-            Ok(WinType::DND)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_DOCK {
-            Ok(WinType::Dock)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_DROPDOWN_MENU {
-            Ok(WinType::DropDownMenu)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_MENU {
-            Ok(WinType::Menu)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_NORMAL {
-            Ok(WinType::Normal)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_NOTIFICATION {
-            Ok(WinType::Notification)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_POPUP_MENU {
-            Ok(WinType::PopupMenu)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_SPLASH {
-            Ok(WinType::Splash)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_TOOLBAR {
-            Ok(WinType::Toolbar)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_TOOLTIP {
-            Ok(WinType::ToolTip)
-        } else if val == atoms._NET_WM_WINDOW_TYPE_UTILITY {
-            Ok(WinType::Utility)
-        } else {
-            Err(WindowManagerError::InvalidWinType(val).into())
+impl WinType {
+    pub fn from(atoms: &AtomCollection, val: u32) -> WinType {
+        match val {
+            _ if val == atoms._NET_WM_WINDOW_TYPE_COMBO => WinType::Combo,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_DESKTOP => WinType::Desktop,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_DIALOG => WinType::Dialog,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_DND => WinType::DND,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_DOCK => WinType::Dock,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_DROPDOWN_MENU => WinType::DropDownMenu,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_MENU => WinType::Menu,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_NORMAL => WinType::Normal,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_NOTIFICATION => WinType::Notification,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_POPUP_MENU => WinType::PopupMenu,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_SPLASH => WinType::Splash,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_TOOLBAR => WinType::Toolbar,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_TOOLTIP => WinType::ToolTip,
+            _ if val == atoms._NET_WM_WINDOW_TYPE_UTILITY => WinType::Utility,
+            _ => WinType::Other(val),
         }
     }
 }
 
 // Implement format! support
-impl fmt::Display for WinType
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
+impl fmt::Display for WinType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            WinType::Invalid => write!(f, ""),
+            WinType::Other(_) => write!(f, ""),
             _ => write!(f, "{}", format!("{:?}", self).to_lowercase()),
         }
     }

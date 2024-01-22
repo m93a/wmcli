@@ -16,7 +16,7 @@ exclude = [
   "tests",
   "benches",
   "target",
-  ".vscode"
+  ".vscode",
 ]
 
 [dependencies]

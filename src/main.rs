@@ -37,8 +37,7 @@ use witcher::prelude::*;
 
 // Configure logging
 #[doc(hidden)]
-fn init_logging(level: Option<Level>)
-{
+fn init_logging(level: Option<Level>) {
     // Use the given log level as highest priority
     // Use environment log level as second priority
     // Fallback on INFO if neither is set
@@ -57,8 +56,7 @@ fn init_logging(level: Option<Level>)
 }
 
 #[doc(hidden)]
-fn init() -> Result<()>
-{
+fn init() -> Result<()> {
     const APP_NAME: &str = "wmcli";
     const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
     const APP_DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
@@ -250,8 +248,7 @@ winctl resize 1276 757 0 0
 }
 
 #[doc(hidden)]
-fn main()
-{
+fn main() {
     match init() {
         Ok(_) => 0,
         Err(err) => {
