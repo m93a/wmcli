@@ -1,12 +1,12 @@
 use std::fmt;
 use std::error::Error as StdError;
 
-/// `WmCtlResult<T>` provides a simplified result type with a common error type
-pub type WmCtlResult<T> = std::result::Result<T, ErrorWrapper>;
+/// `WmResult<T>` provides a simplified result type with a common error type
+pub type WindowManagerResult<T> = std::result::Result<T, ErrorWrapper>;
 
-/// WmCtlError defines all the internal errors that `libwmctl` might return
+/// WmcliError defines all the internal errors that `libewmh` might return
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum WmCtlError {
+pub enum WindowManagerError {
     DesktopWinNotFound,
     InvalidAtom(String),
     InvalidWinGravity(u32),
@@ -20,31 +20,31 @@ pub enum WmCtlError {
     TaskbarNotFound,
     TaskbarReservationNotFound,
 }
-impl std::error::Error for WmCtlError {}
-impl fmt::Display for WmCtlError {
+impl std::error::Error for WindowManagerError {}
+impl fmt::Display for WindowManagerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            WmCtlError::DesktopWinNotFound => write!(f, "desktop window was not found"),
-            WmCtlError::InvalidAtom(ref err) => write!(f, "invalid atom was given: {}", err),
-            WmCtlError::InvalidWinGravity(ref err) => write!(f, "invalid gravity was given: {}", err),
-            WmCtlError::InvalidWinPosition(ref err) => write!(f, "invalid position was given: {}", err),
-            WmCtlError::InvalidWinShape(ref err) => write!(f, "invalid shape was given: {}", err),
-            WmCtlError::InvalidWinClass(ref err) => write!(f, "invalid class was given: {}", err),
-            WmCtlError::InvalidWinMap(ref err) => write!(f, "invalid map was given: {}", err),
-            WmCtlError::InvalidWinState(ref err) => write!(f, "invalid state was given: {}", err),
-            WmCtlError::InvalidWinType(ref err) => write!(f, "invalid type was given: {}", err),
-            WmCtlError::PropertyNotFound(ref err) => write!(f, "property {} was not found", err),
-            WmCtlError::TaskbarNotFound => write!(f, "taskbar not found"),
-            WmCtlError::TaskbarReservationNotFound => write!(f, "taskbar reservation not found"),
+            WindowManagerError::DesktopWinNotFound => write!(f, "desktop window was not found"),
+            WindowManagerError::InvalidAtom(ref err) => write!(f, "invalid atom was given: {}", err),
+            WindowManagerError::InvalidWinGravity(ref err) => write!(f, "invalid gravity was given: {}", err),
+            WindowManagerError::InvalidWinPosition(ref err) => write!(f, "invalid position was given: {}", err),
+            WindowManagerError::InvalidWinShape(ref err) => write!(f, "invalid shape was given: {}", err),
+            WindowManagerError::InvalidWinClass(ref err) => write!(f, "invalid class was given: {}", err),
+            WindowManagerError::InvalidWinMap(ref err) => write!(f, "invalid map was given: {}", err),
+            WindowManagerError::InvalidWinState(ref err) => write!(f, "invalid state was given: {}", err),
+            WindowManagerError::InvalidWinType(ref err) => write!(f, "invalid type was given: {}", err),
+            WindowManagerError::PropertyNotFound(ref err) => write!(f, "property {} was not found", err),
+            WindowManagerError::TaskbarNotFound => write!(f, "taskbar not found"),
+            WindowManagerError::TaskbarReservationNotFound => write!(f, "taskbar reservation not found"),
         }
     }
 }
 
-/// ErrorWrapper provides wrapper around all the underlying library dependencys that `libwmctl` uses
+/// ErrorWrapper provides wrapper around all the underlying library dependencys that `libewmh` uses
 /// such that we can easily surface all errors from `libwmctdl` in a single easy way.
 #[derive(Debug)]
 pub enum ErrorWrapper {
-    WmCtl(WmCtlError),
+    WindowManager(WindowManagerError),
 
     // std::str::Utf8Error
     Utf8(std::str::Utf8Error),
@@ -81,7 +81,7 @@ impl StdError for ErrorWrapper {}
 impl fmt::Display for ErrorWrapper {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ErrorWrapper::WmCtl(ref err) => write!(f, "{}", err),
+            ErrorWrapper::WindowManager(ref err) => write!(f, "{}", err),
             ErrorWrapper::Utf8(ref err) => write!(f, "{}", err),
             ErrorWrapper::Connect(ref err) => write!(f, "{}", err),
             ErrorWrapper::Connection(ref err) => write!(f, "{}", err),
@@ -93,7 +93,7 @@ impl fmt::Display for ErrorWrapper {
 impl AsRef<dyn StdError> for ErrorWrapper {
     fn as_ref(&self) -> &(dyn StdError + 'static) {
         match *self {
-            ErrorWrapper::WmCtl(ref err) => err,
+            ErrorWrapper::WindowManager(ref err) => err,
             ErrorWrapper::Utf8(ref err) => err,
             ErrorWrapper::Connect(ref err) => err,
             ErrorWrapper::Connection(ref err) => err,
@@ -105,7 +105,7 @@ impl AsRef<dyn StdError> for ErrorWrapper {
 impl AsMut<dyn StdError> for ErrorWrapper {
     fn as_mut(&mut self) -> &mut (dyn StdError + 'static) {
         match *self {
-            ErrorWrapper::WmCtl(ref mut err) => err,
+            ErrorWrapper::WindowManager(ref mut err) => err,
             ErrorWrapper::Utf8(ref mut err) => err,
             ErrorWrapper::Connect(ref mut err) => err,
             ErrorWrapper::Connection(ref mut err) => err,
@@ -114,9 +114,9 @@ impl AsMut<dyn StdError> for ErrorWrapper {
     }
 }
 
-impl From<WmCtlError> for ErrorWrapper {
-    fn from(err: WmCtlError) -> ErrorWrapper {
-        ErrorWrapper::WmCtl(err)
+impl From<WindowManagerError> for ErrorWrapper {
+    fn from(err: WindowManagerError) -> ErrorWrapper {
+        ErrorWrapper::WindowManager(err)
     }
 }
 

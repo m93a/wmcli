@@ -1,21 +1,21 @@
-# wmctl
+# wmcli
 [![license-badge](https://img.shields.io/crates/l/fungus.svg)](https://opensource.org/licenses/MIT)
-[![crates.io](https://img.shields.io/crates/v/wmctl.svg)](https://crates.io/crates/wmctl)
+[![crates.io](https://img.shields.io/crates/v/wmcli.svg)](https://crates.io/crates/wmcli)
 [![Minimum rustc](https://img.shields.io/badge/rustc-1.30+-lightgray.svg)](https://github.com/phR0ze/gory#rustc-requirements)
 
 ***Rust X11 automation***
 
-`wmctl` implements the [Extended Window Manager Hints (EWMH) specification](https://specifications.freedesktop.org/wm-spec/latest/)
-as a way to work along side EWMH compatible window managers as a companion. `wmctl` provides the 
+`wmcli` implements the [Extended Window Manager Hints (EWMH) specification](https://specifications.freedesktop.org/wm-spec/latest/)
+as a way to work along side EWMH compatible window managers as a companion. `wmcli` provides the 
 ability to precisely define how windows should be shaped and placed and can fill in gaps for window 
-managers lacking some shaping or placement features. Mapping wmctl commands to user defined hot key 
+managers lacking some shaping or placement features. Mapping wmcli commands to user defined hot key 
 sequences will allow for easy window manipulation beyond what your favorite EWMH window manager 
 provides.
 
 ### Disclaimer
-***wmctl*** comes with absolutely no guarantees or support of any kind. It is to be used at
-your own risk. Any damages, issues, losses or problems caused by the use of ***wmctl*** are
-strictly the responsiblity of the user and not the developer/creator of ***wmctl***.
+***wmcli*** comes with absolutely no guarantees or support of any kind. It is to be used at
+your own risk. Any damages, issues, losses or problems caused by the use of ***wmcli*** are
+strictly the responsiblity of the user and not the developer/creator of ***wmcli***.
 
 ### Quick links
 * [Usage](#usage)
@@ -33,19 +33,19 @@ strictly the responsiblity of the user and not the developer/creator of ***wmctl
 ***rustc >= 1.30*** is required due to the 
 [tracing\_subscriber](https://docs.rs/tracing-subscriber/0.2.15/tracing_subscriber) requirements
 
-`$ wmctl -h` for cli help
+`$ wmcli -h` for cli help
 ![help image](docs/images/help.png)
 
 ### Shape window <a name="shape-window"/></a>
 Shape the active window using the pre-defined `small` shape which is a quarter of the screen.
 ```bash
-$ wmctl shape small
+$ wmcli shape small
 ```
 
 ### Move window <a name="move-window"/></a>
 Move the active window to the bottom left corner of the screen.
 ```bash
-$ wmctl move bottom-left
+$ wmcli move bottom-left
 ```
 
 ### Place window <a name="place-window"/></a>
@@ -53,7 +53,7 @@ Combine the shape and move into a single command by placing the window. First th
 using the pre-defined `small` shape then it is moved to the bottom left of the screen in a single 
 operation.
 ```bash
-$ wmctl place small bottom-left
+$ wmcli place small bottom-left
 ```
 
 ## Contribute <a name="Contribute"/></a>
@@ -63,7 +63,7 @@ or not the change fits with my goals/ideals for the project.
 ### Git-Hook <a name="git-hook"/></a>
 Enable the git hooks to have automatic version increments
 ```bash
-cd ~/Projects/wmctl
+cd ~/Projects/wmcli
 git config core.hooksPath .githooks
 ```
 

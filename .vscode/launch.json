@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'wmctl'",
+            "name": "Debug executable 'wmcli'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=wmctl",
-                    "--package=wmctl"
+                    "--bin=wmcli",
+                    "--package=wmcli"
                 ],
                 "filter": {
-                    "name": "wmctl",
+                    "name": "wmcli",
                     "kind": "bin"
                 }
             },
@@ -29,16 +29,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'wmctl'",
+            "name": "Debug unit tests in executable 'wmcli'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=wmctl",
-                    "--package=wmctl"
+                    "--bin=wmcli",
+                    "--package=wmcli"
                 ],
                 "filter": {
-                    "name": "wmctl",
+                    "name": "wmcli",
                     "kind": "bin"
                 }
             },
@@ -48,16 +48,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'libwmctl'",
+            "name": "Debug unit tests in library 'libewmh'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=libwmctl"
+                    "--package=libewmh"
                 ],
                 "filter": {
-                    "name": "libwmctl",
+                    "name": "libewmh",
                     "kind": "lib"
                 }
             },

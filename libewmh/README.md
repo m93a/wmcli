@@ -1,14 +1,14 @@
-# libwmctl
+# libewmh
 [![license-badge](https://img.shields.io/crates/l/fungus.svg)](https://opensource.org/licenses/MIT)
-[![crates.io](https://img.shields.io/crates/v/libwmctl.svg)](https://crates.io/crates/libwmctl)
+[![crates.io](https://img.shields.io/crates/v/libewmh.svg)](https://crates.io/crates/libewmh)
 [![Minimum rustc](https://img.shields.io/badge/rustc-1.30+-lightgray.svg)](https://github.com/phR0ze/gory#rustc-requirements)
 
 ***Rust X11 automation***
 
-`libwmctl` implements the [Extended Window Manager Hints (EWMH) specification](https://specifications.freedesktop.org/wm-spec/latest/)
-as a way to work along side EWMH compatible window managers as a companion. `libwmctl` provides the 
+`libewmh` implements the [Extended Window Manager Hints (EWMH) specification](https://specifications.freedesktop.org/wm-spec/latest/)
+as a way to work along side EWMH compatible window managers as a companion. `libewmh` provides the 
 ability to precisely define how windows should be shaped and placed and can fill in gaps for window 
-managers lacking some shaping or placement features. `libwmctl` exposes X11 details in a simple
+managers lacking some shaping or placement features. `libewmh` exposes X11 details in a simple
 consumable way opening the door to window manipulation beyond what your favorite EWMH window manager 
 provides.
 
@@ -34,7 +34,7 @@ Shape the active window using the pre-defined `WinShape::Small` shape which is a
 screen.
 
 ```rust
-use libwmctl::prelude::*;
+use libewmh::prelude::*;
 
 fn main() {
     WinOpt::new(None).shape(WinShape::Max).place().unwrap();
@@ -46,7 +46,7 @@ Move the active window to the bottom left corner of the screen using the pre-def
 `WinPosition::BottomLeft` position.
 
 ```rust
-use libwmctl::prelude::*;
+use libewmh::prelude::*;
 
 fn main() {
     WinOpt::new(None).pos(WinPosition::BottomLeft).place().unwrap();
@@ -59,7 +59,7 @@ using the pre-defined `WinShap::Small` shape then it is moved to the bottom left
 pre-defined `WinPosition:BottomLeft` position in a single operation.
 
 ```rust
-use libwmctl::prelude::*;
+use libewmh::prelude::*;
 
 fn main() {
     WinOpt::new(None).shape(WinShape::Small).pos(WinPosition::BottomLeft).place().unwrap();
@@ -68,34 +68,34 @@ fn main() {
 
 ### Window Manager info <a name="window-manager-info"/></a>
 ```rust
-use libwmctl::prelude::*;
+use libewmh::prelude::*;
 
 fn main() {
-    let wmctl = WmCtl::connect().unwrap();
-    let (_, wm_name) = wmctl.winmgr().unwrap();
-    let win = wmctl.active_win().unwrap();
+    let wmcli = wmcli::connect().unwrap();
+    let (_, wm_name) = wmcli.winmgr().unwrap();
+    let win = wmcli.active_win().unwrap();
     println!("X11 Information");
     println!("-----------------------------------------------------------------------");
     println!("Window Manager:    {}", wm_name);
-    println!("Composite Manager: {}", wmctl.composite_manager().unwrap());
-    println!("Root Window:       {}", wmctl.root());
-    println!("Work area:         {}x{}", wmctl.work_width(), wmctl.work_height());
-    println!("Screen Size:       {}x{}", wmctl.width(), wmctl.height());
-    println!("Desktops:          {}", wmctl.desktops().unwrap());
+    println!("Composite Manager: {}", wmcli.composite_manager().unwrap());
+    println!("Root Window:       {}", wmcli.root());
+    println!("Work area:         {}x{}", wmcli.work_width(), wmcli.work_height());
+    println!("Screen Size:       {}x{}", wmcli.width(), wmcli.height());
+    println!("Desktops:          {}", wmcli.desktops().unwrap());
     println!();
     println!("Active Window");
     println!("{:-<120}", "");
 
     println!("{:<8} {:<3} {:<6} {:<5} {:<5} {:<4} {:<4} {:<8} {:<7} {:<18} {:<18} {}", "ID", "DSK", "PID", "X", "Y", "W", "H", "BORDERS", "TYPE", "STATE", "CLASS", "NAME");
 
-    let pid = wmctl.win_pid(win).unwrap_or(-1);
-    let desktop = wmctl.win_desktop(win).unwrap_or(-1);
-    let typ = wmctl.win_type(win).unwrap_or(WinType::Invalid);
-    let states = wmctl.win_state(win).unwrap_or(vec![WinState::Invalid]);
-    let (x, y, w, h) = wmctl.win_geometry(win).unwrap_or((0,0,0,0));
-    let (l, r, t, b) = wmctl.win_borders(win).unwrap_or((0, 0, 0, 0));
-    let class = wmctl.win_class(win).unwrap_or("".to_owned());
-    let name = wmctl.win_name(win).unwrap_or("".to_owned());
+    let pid = wmcli.win_pid(win).unwrap_or(-1);
+    let desktop = wmcli.win_desktop(win).unwrap_or(-1);
+    let typ = wmcli.win_type(win).unwrap_or(WinType::Invalid);
+    let states = wmcli.win_state(win).unwrap_or(vec![WinState::Invalid]);
+    let (x, y, w, h) = wmcli.win_geometry(win).unwrap_or((0,0,0,0));
+    let (l, r, t, b) = wmcli.win_borders(win).unwrap_or((0, 0, 0, 0));
+    let class = wmcli.win_class(win).unwrap_or("".to_owned());
+    let name = wmcli.win_name(win).unwrap_or("".to_owned());
     println!("{:<8} {:<3} {:<6} {:<5} {:<5} {:<4} {:<4} {:<8} {:<7} {:<18} {:<18} {}",
         format!("{:0>8}", win), format!("{:>2}", desktop), pid,
         format!("{:<4}", x), format!("{:<4}", y), format!("{:<4}", w), format!("{:<4}", h), 
@@ -111,7 +111,7 @@ or not the change fits with my goals/ideals for the project.
 ### Git-Hook <a name="git-hook"/></a>
 Enable the git hooks to have automatic version increments
 ```bash
-cd ~/Projects/wmctl
+cd ~/Projects/wmcli
 git config core.hooksPath .githooks
 ```
 

@@ -2,7 +2,7 @@ use std::{convert, fmt};
 
 use x11rb::protocol::xproto;
 
-use crate::{wmctl::AtomCollection, WmCtlError, WmCtlResult};
+use crate::{wm::AtomCollection, WindowManagerError, WindowManagerResult};
 
 /// WinGravity
 /// Gravity is defined as the lower byte of the move resize flags 32bit value
@@ -81,7 +81,7 @@ impl fmt::Display for WinPosition
 // Convert from &str to Postiion
 impl convert::TryFrom<&str> for WinPosition
 {
-    type Error = WmCtlError;
+    type Error = WindowManagerError;
 
     fn try_from(val: &str) -> Result<Self, Self::Error>
     {
@@ -99,7 +99,7 @@ impl convert::TryFrom<&str> for WinPosition
             "right-center" => Ok(WinPosition::RightCenter),
             "top-center" => Ok(WinPosition::TopCenter),
             "bottom-center" => Ok(WinPosition::BottomCenter),
-            _ => Err(WmCtlError::InvalidWinPosition(val.to_string()).into()),
+            _ => Err(WindowManagerError::InvalidWinPosition(val.to_string()).into()),
         }
     }
 }
@@ -107,7 +107,7 @@ impl convert::TryFrom<&str> for WinPosition
 // Convert from String to Postiion
 impl convert::TryFrom<String> for WinPosition
 {
-    type Error = WmCtlError;
+    type Error = WindowManagerError;
 
     fn try_from(val: String) -> Result<Self, Self::Error>
     {
@@ -146,7 +146,7 @@ impl fmt::Display for WinShape
 // Convert from &str to Shape
 impl convert::TryFrom<&str> for WinShape
 {
-    type Error = WmCtlError;
+    type Error = WindowManagerError;
 
     fn try_from(val: &str) -> Result<Self, Self::Error>
     {
@@ -160,7 +160,7 @@ impl convert::TryFrom<&str> for WinShape
             "large" => Ok(WinShape::Large),
             "shrink" => Ok(WinShape::Shrink),
             "unmax" => Ok(WinShape::UnMax),
-            _ => Err(WmCtlError::InvalidWinShape(val.to_string()).into()),
+            _ => Err(WindowManagerError::InvalidWinShape(val.to_string()).into()),
         }
     }
 }
@@ -168,7 +168,7 @@ impl convert::TryFrom<&str> for WinShape
 // Convert from a String to a Shape
 impl convert::TryFrom<String> for WinShape
 {
-    type Error = WmCtlError;
+    type Error = WindowManagerError;
 
     fn try_from(val: String) -> Result<Self, Self::Error>
     {
@@ -189,7 +189,7 @@ pub enum WinClass
 // Convert from u32 to Class
 impl WinClass
 {
-    pub fn from(val: u32) -> WmCtlResult<WinClass>
+    pub fn from(val: u32) -> WindowManagerResult<WinClass>
     {
         if val == xproto::WindowClass::COPY_FROM_PARENT.into() {
             Ok(WinClass::CopyFromParent)
@@ -198,7 +198,7 @@ impl WinClass
         } else if val == xproto::WindowClass::INPUT_OUTPUT.into() {
             Ok(WinClass::InputOutput)
         } else {
-            Err(WmCtlError::InvalidWinClass(val).into())
+            Err(WindowManagerError::InvalidWinClass(val).into())
         }
     }
 }
@@ -227,7 +227,7 @@ pub enum WinMap
 // Convert from u32 to state
 impl WinMap
 {
-    pub fn from(val: u32) -> WmCtlResult<WinMap>
+    pub fn from(val: u32) -> WindowManagerResult<WinMap>
     {
         if val == xproto::MapState::UNMAPPED.into() {
             Ok(WinMap::Unmapped)
@@ -236,7 +236,7 @@ impl WinMap
         } else if val == xproto::MapState::VIEWABLE.into() {
             Ok(WinMap::Viewable)
         } else {
-            Err(WmCtlError::InvalidWinMap(val).into())
+            Err(WindowManagerError::InvalidWinMap(val).into())
         }
     }
 }
@@ -275,7 +275,7 @@ pub enum WinState
 // Convert from u32 to State
 impl WinState
 {
-    pub fn from(atoms: &AtomCollection, val: u32) -> WmCtlResult<WinState>
+    pub fn from(atoms: &AtomCollection, val: u32) -> WindowManagerResult<WinState>
     {
         if val == atoms._NET_WM_STATE_ABOVE {
             Ok(WinState::Above)
@@ -302,7 +302,7 @@ impl WinState
         } else if val == atoms._NET_WM_STATE_SKIP_TASKBAR {
             Ok(WinState::SkipTaskbar)
         } else {
-            Err(WmCtlError::InvalidWinState(val).into())
+            Err(WindowManagerError::InvalidWinState(val).into())
         }
     }
 }
@@ -344,7 +344,7 @@ pub enum WinType
 // Convert from u32 to Type
 impl WinType
 {
-    pub fn from(atoms: &AtomCollection, val: u32) -> WmCtlResult<WinType>
+    pub fn from(atoms: &AtomCollection, val: u32) -> WindowManagerResult<WinType>
     {
         if val == atoms._NET_WM_WINDOW_TYPE_COMBO {
             Ok(WinType::Combo)
@@ -375,7 +375,7 @@ impl WinType
         } else if val == atoms._NET_WM_WINDOW_TYPE_UTILITY {
             Ok(WinType::Utility)
         } else {
-            Err(WmCtlError::InvalidWinType(val).into())
+            Err(WindowManagerError::InvalidWinType(val).into())
         }
     }
 }

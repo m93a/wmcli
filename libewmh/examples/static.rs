@@ -1,4 +1,4 @@
-use libwmctl::prelude::*;
+use libewmh::prelude::*;
 
 // Explicit resize of the active window
 fn main() {

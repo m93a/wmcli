@@ -1,7 +1,7 @@
-//! `wmctl` implements the [Extended Window Manager Hints (EWMH) specification](https://specifications.freedesktop.org/wm-spec/latest/)
-//! as a way to work along side EWMH compatible window managers as a companion. `wmctl` provides the
+//! `wmcli` implements the [Extended Window Manager Hints (EWMH) specification](https://specifications.freedesktop.org/wm-spec/latest/)
+//! as a way to work along side EWMH compatible window managers as a companion. `wmcli` provides the
 //! ability to precisely define how windows should be shaped and placed and can fill in gaps for
-//! window managers lacking some shaping or placement features. Mapping `wmctl` commands to user
+//! window managers lacking some shaping or placement features. Mapping `wmcli` commands to user
 //! defined hot key sequences will allow for easy window manipulation beyond what your favorite EWMH
 //! window manager provides.
 //!
@@ -10,27 +10,27 @@
 //! ### Shape a window
 //! Shape the active window using the pre-defined `small` shape which is a quarter of the screen.
 //! ```bash
-//! wmctl shape small
+//! wmcli shape small
 //! ```
 //!
 //! ### Move a window
 //! Move the active window to the bottom left corner of the screen.
 //! ```bash
-//! wmctl move bottom-left
+//! wmcli move bottom-left
 //! ```
 //!
 //! ### Place a window
 //! Shape the active window using the pre-defined `small` shape which is a quarter of the screen
 //! and then position it in the bottom left corner of the screen.
 //! ```bash
-//! wmctl place small bottom-left
+//! wmcli place small bottom-left
 //! ```
 use std::convert::TryFrom;
 use std::env;
 
 use clap::{App, AppSettings, Arg, SubCommand};
 use gory::*;
-use libwmctl::prelude::*;
+use libewmh::prelude::*;
 use tracing::Level;
 use tracing_subscriber;
 use witcher::prelude::*;
@@ -59,7 +59,7 @@ fn init_logging(level: Option<Level>)
 #[doc(hidden)]
 fn init() -> Result<()>
 {
-    const APP_NAME: &str = "wmctl";
+    const APP_NAME: &str = "wmcli";
     const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
     const APP_DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
     const APP_GIT_COMMIT: &str = env!("APP_GIT_COMMIT");
@@ -211,11 +211,11 @@ winctl resize 1276 757 0 0
 
     // info
     } else if let Some(_) = matches.subcommand_matches("info") {
-        libwmctl::info(win).pass()?;
+        libewmh::info(win).pass()?;
 
     // list
     } else if let Some(matches) = matches.subcommand_matches("list") {
-        libwmctl::list(matches.is_present("all")).pass()?;
+        libewmh::list(matches.is_present("all")).pass()?;
 
     // move
     } else if let Some(ref matches) = matches.subcommand_matches("move") {

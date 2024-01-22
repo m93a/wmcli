@@ -1,11 +1,14 @@
+[workspace]
+members = ["libewmh"]
+
 [package]
-name = "wmctl"
+name = "wmcli"
 version = "0.0.47"
 edition = "2021"
-authors = ["phR0ze"]
+authors = ["m93a", "phR0ze"]
 license = "MIT OR Apache-2.0"
-description = "Rust X11 automation"
-repository = "https://github.com/phR0ze/wmctl"
+description = "CLI for manipulating windows in a window manager that supports EWMH"
+repository = "https://github.com/m93a/wmcli"
 exclude = [
   "docs",
   "config",
@@ -16,31 +19,23 @@ exclude = [
   "tests",
   "benches",
   "target",
-  ".vscode"
-]
-
-# Spliting the library from the binary with workspaces allows for a separation of
-# dependencies so the binary dependencies aren't required for the library.
-# path = <dependency> entries in dependencies are automatically included
-[workspace]
-members = [
-  "libwmctl"
+  ".vscode",
 ]
 
 # Higher the opt-level value the slower the compile time
 [profile.release]
-opt-level = 3   # Optimize for speed over size
-lto = true      # Futher assist in optimization
-debug = false   # Provide debug symbols for Witcher
+opt-level = 3 # Optimize for speed over size
+lto = true    # Futher assist in optimization
+debug = false # Provide debug symbols for Witcher
 
 [profile.dev]
-opt-level = 0   # Default no optimization
+opt-level = 0 # Default no optimization
 
 [dependencies]
 gory = "0.1"
 tracing = "0.1"
 witcher = "0.1.19"
-libwmctl = "0.0.45"
+libewmh = { version = "0.0.1", path = "./libewmh" }
 tracing-subscriber = "0.3"
 
 [dependencies.clap]

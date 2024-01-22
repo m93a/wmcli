@@ -1,28 +1,28 @@
-//! `libwmctl` implements the [Extended Window Manager Hints (EWMH) specification](https://specifications.freedesktop.org/wm-spec/latest/)
+//! `libewmh` implements the [Extended Window Manager Hints (EWMH) specification](https://specifications.freedesktop.org/wm-spec/latest/)
 //! as a way to integrate with EWMH compatible window managers. The EWHM spec builds on the lower
 //! level Inter Client Communication Conventions Manual (ICCCM) to define interactions between
 //! window managers, compositing managers and applications.
 //!
 //! [Root Window Properties](https://specifications.freedesktop.org/wm-spec/latest/ar01s03.html)  
 //! The EWMH spec defines a number of properties that EWHM compliant window managers will maintain
-//! and return to clients requesting information. `libwmctl` taps into the message queue to retrieve
+//! and return to clients requesting information. `libewmh` taps into the message queue to retrieve
 //! details about a given window and to than manipulate the given window as desired.
 //!
-//! `wmctl` uses `libwmctl` with pre-defined shapes and positions to manipulate how a window should
-//! be shaped and positioned on the screen in an ergonomic way; however `libwmctl` could be used
+//! `wmcli` uses `libewmh` with pre-defined shapes and positions to manipulate how a window should
+//! be shaped and positioned on the screen in an ergonomic way; however `libewmh` could be used
 //! for a variety of reasons.
 mod error;
 mod model;
-mod wmctl;
+mod wm;
 pub use error::*;
 pub use model::*;
-pub use wmctl::WmCtl;
+pub use wm::WindowManager;
 
 /// All essential symbols in a simple consumable form
 ///
 /// ### Examples
 /// ```
-/// use libwmctl::prelude::*;
+/// use libewmh::prelude::*;
 /// ```
 pub mod prelude
 {
@@ -50,7 +50,7 @@ impl WinOpt
     ///
     /// ### Examples
     /// ```
-    /// use libwmctl::prelude::*;
+    /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None);
     /// ```
     pub fn new(win: Option<u32>) -> Self
@@ -75,7 +75,7 @@ impl WinOpt
     ///
     /// ### Examples
     /// ```
-    /// use libwmctl::prelude::*;
+    /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None).size(500, 500);
     /// ```
     pub fn size(mut self, w: u32, h: u32) -> Self
@@ -95,7 +95,7 @@ impl WinOpt
     ///
     /// ### Examples
     /// ```
-    /// use libwmctl::prelude::*;
+    /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None).location(0, 0);
     /// ```
     pub fn location(mut self, x: u32, y: u32) -> Self
@@ -114,7 +114,7 @@ impl WinOpt
     ///
     /// ### Examples
     /// ```
-    /// use libwmctl::prelude::*;
+    /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None).shape(WinShape::Large);
     /// ```
     pub fn shape(mut self, shape: WinShape) -> Self
@@ -133,7 +133,7 @@ impl WinOpt
     ///
     /// ### Examples
     /// ```
-    /// use libwmctl::prelude::*;
+    /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None).pos(WinPosition::Right);
     /// ```
     pub fn pos(mut self, pos: WinPosition) -> Self
@@ -159,22 +159,22 @@ impl WinOpt
     ///
     /// ### Examples
     /// ```ignore
-    /// use libwmctl::prelude::*;
+    /// use libewmh::prelude::*;
     /// let win = WinOpt::new(None).shape(WinShape::Large).pos(WinPosition::Right);
     /// ```
-    pub fn place(self) -> WmCtlResult<()>
+    pub fn place(self) -> WindowManagerResult<()>
     {
         let execute = self.any();
-        let wmctl = WmCtl::connect()?;
+        let wmcli = WindowManager::connect()?;
 
         // Get window properties
-        let win = self.win.unwrap_or(wmctl.active_win()?);
-        let (bl, br, bt, bb) = wmctl.win_borders(win)?;
-        let (_, _, w, h) = wmctl.win_geometry(win)?;
+        let win = self.win.unwrap_or(wmcli.active_win()?);
+        let (bl, br, bt, bb) = wmcli.win_borders(win)?;
+        let (_, _, w, h) = wmcli.win_geometry(win)?;
 
         // Shape the window as directed
         let (gravity, sw, sh) = if let Some(shape) = self.shape {
-            let (gravity, sw, sh) = shape_win(&wmctl, win, w, h, bl + br, bt + bb, shape)?;
+            let (gravity, sw, sh) = shape_win(&wmcli, win, w, h, bl + br, bt + bb, shape)?;
 
             // Don't use gravity if positioning is required
             if self.pos.is_some() || self.x.is_some() || self.y.is_some() {
@@ -190,7 +190,7 @@ impl WinOpt
 
         // Position the window if directed
         let (x, y) = if let Some(pos) = self.pos {
-            move_win(&wmctl, win, sw.unwrap_or(w), sh.unwrap_or(h), bl + br, bt + bb, pos)?
+            move_win(&wmcli, win, sw.unwrap_or(w), sh.unwrap_or(h), bl + br, bt + bb, pos)?
         } else if self.x.is_some() && self.y.is_some() {
             (self.x, self.y)
         } else {
@@ -199,7 +199,7 @@ impl WinOpt
 
         // Execute if reason to
         if execute {
-            wmctl.move_resize_win(win, gravity, x, y, sw, sh)
+            wmcli.move_resize_win(win, gravity, x, y, sw, sh)
         } else {
             Ok(())
         }
@@ -214,28 +214,28 @@ impl WinOpt
 ///
 /// ### Examples
 /// ```ignore
-/// use libwmctl::prelude::*;
-/// libwmctl::info(None).unwrap();
+/// use libewmh::prelude::*;
+/// libewmh::info(None).unwrap();
 /// ```
-pub fn info(win: Option<u32>) -> WmCtlResult<()>
+pub fn info(win: Option<u32>) -> WindowManagerResult<()>
 {
-    let wmctl = WmCtl::connect()?;
-    let (_, wm_name) = wmctl.winmgr()?;
-    let win = win.unwrap_or(wmctl.active_win()?);
+    let wmcli = WindowManager::connect()?;
+    let (_, wm_name) = wmcli.winmgr()?;
+    let win = win.unwrap_or(wmcli.active_win()?);
     println!("X11 Information");
     println!("-----------------------------------------------------------------------");
     println!("Window Manager:    {}", wm_name);
-    println!("Composite Manager: {}", wmctl.composite_manager()?);
-    println!("Root Window:       {}", wmctl.root);
-    println!("Work area:         {}x{}", wmctl.work_width, wmctl.work_height);
-    println!("Screen Size:       {}x{}", wmctl.width, wmctl.height);
-    println!("Desktops:          {}", wmctl.desktops()?);
+    println!("Composite Manager: {}", wmcli.composite_manager()?);
+    println!("Root Window:       {}", wmcli.root);
+    println!("Work area:         {}x{}", wmcli.work_width, wmcli.work_height);
+    println!("Screen Size:       {}x{}", wmcli.width, wmcli.height);
+    println!("Desktops:          {}", wmcli.desktops()?);
     println!();
     println!("Active Window");
     println!("{:-<120}", "");
     print_win_header();
-    print_win_details(&wmctl, win)?;
-    wmctl.win_attributes(win)?;
+    print_win_details(&wmcli, win)?;
+    wmcli.win_attributes(win)?;
     Ok(())
 }
 
@@ -246,15 +246,15 @@ pub fn info(win: Option<u32>) -> WmCtlResult<()>
 ///
 /// ### Examples
 /// ```ignore
-/// use libwmctl::prelude::*;
-/// libwmctl::list().unwrap();
+/// use libewmh::prelude::*;
+/// libewmh::list().unwrap();
 /// ```
-pub fn list(all: bool) -> WmCtlResult<()>
+pub fn list(all: bool) -> WindowManagerResult<()>
 {
-    let wmctl = WmCtl::connect()?;
+    let wmcli = WindowManager::connect()?;
     print_win_header();
-    for win in wmctl.windows(all)? {
-        print_win_details(&wmctl, win)?;
+    for win in wmcli.windows(all)? {
+        print_win_details(&wmcli, win)?;
     }
     Ok(())
 }
@@ -267,16 +267,16 @@ fn print_win_header()
     );
 }
 
-fn print_win_details(wmctl: &WmCtl, win: u32) -> WmCtlResult<()>
+fn print_win_details(wmcli: &WindowManager, win: u32) -> WindowManagerResult<()>
 {
-    let pid = wmctl.win_pid(win).unwrap_or(-1);
-    let desktop = wmctl.win_desktop(win).unwrap_or(-1);
-    let typ = wmctl.win_type(win).unwrap_or(WinType::Invalid);
-    let states = wmctl.win_state(win).unwrap_or(vec![WinState::Invalid]);
-    let (x, y, w, h) = wmctl.win_geometry(win)?;
-    let (l, r, t, b) = wmctl.win_borders(win).unwrap_or((0, 0, 0, 0));
-    let class = wmctl.win_class(win).unwrap_or("".to_owned());
-    let name = wmctl.win_name(win).unwrap_or("".to_owned());
+    let pid = wmcli.win_pid(win).unwrap_or(-1);
+    let desktop = wmcli.win_desktop(win).unwrap_or(-1);
+    let typ = wmcli.win_type(win).unwrap_or(WinType::Invalid);
+    let states = wmcli.win_state(win).unwrap_or(vec![WinState::Invalid]);
+    let (x, y, w, h) = wmcli.win_geometry(win)?;
+    let (l, r, t, b) = wmcli.win_borders(win).unwrap_or((0, 0, 0, 0));
+    let class = wmcli.win_class(win).unwrap_or("".to_owned());
+    let name = wmcli.win_name(win).unwrap_or("".to_owned());
     println!(
         "{:<8} {:<3} {:<6} {:<5} {:<5} {:<4} {:<4} {:<8} {:<7} {:<18} {:<18} {}",
         format!("{:0>8}", win),
@@ -297,16 +297,16 @@ fn print_win_details(wmctl: &WmCtl, win: u32) -> WmCtlResult<()>
 
 /// Move the given window or active window if not given without changing its size
 fn move_win(
-    wmctl: &WmCtl, win: u32, w: u32, h: u32, bw: u32, bh: u32, pos: WinPosition,
-) -> WmCtlResult<(Option<u32>, Option<u32>)>
+    wmcli: &WindowManager, win: u32, w: u32, h: u32, bw: u32, bh: u32, pos: WinPosition,
+) -> WindowManagerResult<(Option<u32>, Option<u32>)>
 {
-    wmctl.unmaximize_win(win)?;
+    wmcli.unmaximize_win(win)?;
 
     // Pre-calculations
-    let cx = if (w + bw) / 2 >= wmctl.work_width / 2 { 0 } else { wmctl.work_width / 2 - (w + bw) / 2 }; // center x
-    let cy = if (h + bh) / 2 >= wmctl.work_height / 2 { 0 } else { wmctl.work_height / 2 - (h + bh) / 2 }; // center y
-    let lx = if w + bw >= wmctl.work_width { 0 } else { wmctl.work_width - w - bw }; // left x
-    let ty = if h + bh >= wmctl.work_height { 0 } else { wmctl.work_height - h - bh }; // top y
+    let cx = if (w + bw) / 2 >= wmcli.work_width / 2 { 0 } else { wmcli.work_width / 2 - (w + bw) / 2 }; // center x
+    let cy = if (h + bh) / 2 >= wmcli.work_height / 2 { 0 } else { wmcli.work_height / 2 - (h + bh) / 2 }; // center y
+    let lx = if w + bw >= wmcli.work_width { 0 } else { wmcli.work_width - w - bw }; // left x
+    let ty = if h + bh >= wmcli.work_height { 0 } else { wmcli.work_height - h - bh }; // top y
 
     // Interpret the position as x, y cordinates
     Ok(match pos {
@@ -328,28 +328,28 @@ fn move_win(
 
 /// Shape the given window or active window if not given without moving it.
 fn shape_win(
-    wmctl: &WmCtl, win: u32, w: u32, h: u32, bw: u32, bh: u32, shape: WinShape,
-) -> WmCtlResult<(Option<u32>, Option<u32>, Option<u32>)>
+    wmcli: &WindowManager, win: u32, w: u32, h: u32, bw: u32, bh: u32, shape: WinShape,
+) -> WindowManagerResult<(Option<u32>, Option<u32>, Option<u32>)>
 {
     // Notes
     // * return values from this func should not include the border sizes
     Ok(match shape {
         WinShape::Max => {
-            wmctl.maximize_win(win)?;
+            wmcli.maximize_win(win)?;
             (None, None, None)
         },
         WinShape::UnMax => {
-            wmctl.unmaximize_win(win)?;
+            wmcli.unmaximize_win(win)?;
             (None, None, None)
         },
         _ => {
-            wmctl.unmaximize_win(win)?;
+            wmcli.unmaximize_win(win)?;
 
             // Pre-calculations
-            let fw = wmctl.work_width - bw; // total width - border
-            let fh = wmctl.work_height - bh; // total height - border
-            let hw = wmctl.work_width / 2 - bw; // total half width - border
-            let hh = wmctl.work_height / 2 - bh; // total half height - border
+            let fw = wmcli.work_width - bw; // total width - border
+            let fh = wmcli.work_height - bh; // total height - border
+            let hw = wmcli.work_width / 2 - bw; // total half width - border
+            let hh = wmcli.work_height / 2 - bh; // total half height - border
 
             let (w, h) = match shape {
                 // Grow the existing dimensions by 1% until full size
@@ -376,7 +376,7 @@ fn shape_win(
 
                 // 3/4 short side x 4x3 sized long size
                 WinShape::Medium => {
-                    let (w, h) = if wmctl.work_height < wmctl.work_width {
+                    let (w, h) = if wmcli.work_height < wmcli.work_width {
                         let h = fh as f32 * 0.75;
                         ((h * 4.0 / 3.0) as u32, h as u32)
                     } else {
@@ -388,7 +388,7 @@ fn shape_win(
 
                 // Full short side x 4x3 sized long size
                 WinShape::Large => {
-                    let (w, h) = if wmctl.work_height < wmctl.work_width {
+                    let (w, h) = if wmcli.work_height < wmcli.work_width {
                         ((fh as f32 * 4.0 / 3.0) as u32, fh)
                     } else {
                         (fw, (fw as f32 * 4.0 / 3.0) as u32)

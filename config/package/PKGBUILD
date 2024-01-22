@@ -1,5 +1,5 @@
 # MIT License
-# Copyright (c) 2021-2022 phR0ze
+# Copyright (c) 2021-2024 phR0ze, m93a
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,19 +20,19 @@
 # SOFTWARE.
 
 #-------------------------------------------------------------------------------
-# Maintained by phR0ze
+# Maintained by m93a
 # https://wiki.archlinux.org/title/Rust_package_guidelines
 #-------------------------------------------------------------------------------
-pkgname=wmctl
+pkgname=wmcli
 pkgver=0.0.45
 pkgrel=1
 pkgdesc="Rust X11 automation"
-url="https://github.com/phR0ze/wmctl"
+url="https://github.com/m93a/wmcli"
 arch=('x86_64')
 depends=('glibc')
 makedepends=('rust')
 license=('MIT' 'APACHE')
-source=("${pkgname-$pkgver}.tar.gz::https://github.com/phR0ze/${pkgname}/archive/refs/tags/v${pkgver}.tar.gz")
+source=("${pkgname-$pkgver}.tar.gz::https://github.com/m93a/${pkgname}/archive/refs/tags/v${pkgver}.tar.gz")
 sha256sums=('12121e5376762f6b8e0f29db0e8adebb01214e9dd4a83443c76eb2ccdc7b5148')
 
 prepare()
@@ -72,7 +72,7 @@ package()
   install -Dm 644 LICENSE-MIT "${pkgdir}/usr/share/${pkgname}"
   install -Dm 644 LICENSE-APACHE "${pkgdir}/usr/share/${pkgname}"
   install -Dm 644 README.md "${pkgdir}/usr/share/${pkgname}"
-  install -Dm 755 "target/release/wmctl" "${pkgdir}/usr/bin"
+  install -Dm 755 "target/release/wmcli" "${pkgdir}/usr/bin"
 }
 
 # vim: ts=2:sw=2:sts=2

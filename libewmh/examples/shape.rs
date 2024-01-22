@@ -1,4 +1,4 @@
-use libwmctl::prelude::*;
+use libewmh::prelude::*;
 
 // Move the active window
 fn main() {

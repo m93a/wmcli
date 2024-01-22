@@ -1,11 +1,11 @@
 [package]
-name = "libwmctl"
-version = "0.0.47"
+name = "libewmh"
+version = "0.0.1"
 edition = "2021"
-authors = ["phR0ze"]
+authors = ["m93a", "phR0ze"]
 license = "MIT OR Apache-2.0"
-description = "Rust X11 automation"
-repository = "https://github.com/phR0ze/wmctl/tree/main/libwmctl"
+description = "Rust API for working with the Extended Window Manager Hints (EWMH) on X11"
+repository = "https://github.com/m93a/wmcli/tree/main/libewmh"
 exclude = [
   "docs",
   "config",
