@@ -25,238 +25,89 @@
 //! ```bash
 //! wmcli place small bottom-left
 //! ```
-use std::convert::TryFrom;
 use std::env;
 
-use clap::{App, AppSettings, Arg, SubCommand};
-use gory::*;
-use libewmh::prelude::*;
-use tracing::Level;
-use tracing_subscriber;
-use witcher::prelude::*;
+use clap::{crate_description, crate_version, Command};
+use libewmh::WinOpt;
 
-// Configure logging
-#[doc(hidden)]
-fn init_logging(level: Option<Level>) {
-    // Use the given log level as highest priority
-    // Use environment log level as second priority
-    // Fallback on INFO if neither is set
-    let loglevel = match level {
-        Some(x) => x,
-        None => match env::var("LOG_LEVEL") {
-            Ok(val) => val.parse().unwrap_or(Level::INFO),
-            Err(_e) => Level::INFO, // default to Info
-        },
-    };
-    tracing_subscriber::fmt()
-        .with_target(false) // turn off file name
-        .with_max_level(loglevel) // set max level to log
-        //.json() // uncomment this line to convert it into json output
-        .init();
+fn cli() -> Command {
+    Command::new("wmcli")
+        .about(crate_description!())
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .version(crate_version!())
+        .subcommand(
+            Command::new("window")
+                .visible_alias("w")
+                .about("Control individual windows.")
+                .subcommand_required(true)
+                .arg_required_else_help(true)
+                .subcommand(Command::new("list").visible_alias("l").about("List out all windows"))
+                .subcommand(Command::new("move").visible_alias("m").about("Move a window"))
+                .subcommand(Command::new("shape").visible_alias("s").about("Resize a window"))
+                .subcommand(Command::new("close").visible_alias("c").about("Close a window")),
+        )
+        .subcommand(
+            Command::new("desktop")
+                .visible_alias("d")
+                .about("Manage desktops (also known as workspaces)")
+                .subcommand_required(true)
+                .arg_required_else_help(true)
+                .subcommand(Command::new("list").visible_alias("l").about("List all desktops"))
+                .subcommand(Command::new("switch").visible_alias("s").about("Switch to a desktop"))
+                .subcommand(Command::new("close").visible_alias("c").about("Close a desktop")),
+        )
 }
 
-#[doc(hidden)]
-fn init() -> Result<()> {
-    const APP_NAME: &str = "wmcli";
-    const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
-    const APP_DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
-    const APP_GIT_COMMIT: &str = env!("APP_GIT_COMMIT");
-    const APP_BUILD_DATE: &str = env!("APP_BUILD_DATE");
-
-    // Parse cli args
-    // -----------------------------------------------------------------------------------------
-    let matches = App::new(format!("{}", APP_NAME.cyan()))
-        .version(&format!("v{}", APP_VERSION)[..])
-        .about(&format!("{}", APP_DESCRIPTION.green())[..])
-        .setting(AppSettings::SubcommandRequiredElseHelp)
-
-        // Global flags
-        .arg(Arg::with_name("test").short("t").long("test").takes_value(false).help("Enable test mode"))
-        .arg(Arg::with_name("debug").short("d").long("debug").takes_value(false).help("Enable debug logging"))
-        .arg(Arg::with_name("quiet").short("q").long("quiet").takes_value(false).help("Disable all logging"))
-
-        // Global options
-        .arg(Arg::with_name("loglevel").long("log-level").value_name("NAME").takes_value(true).help("Sets the log level [error|warn|info|debug|trace] [default: info]"))
-        .arg(Arg::with_name("window").short("w").long("window").value_name("WINDOW").takes_value(true).help("Window to operate against"))
-
-        // Version command
-        .subcommand(SubCommand::with_name("version").alias("v").alias("ver").about("Print version information"))
-
-        // Info
-        .subcommand(SubCommand::with_name("info").about("List out X11 information")
-            .long_about(r"List out X11 information i.e. resolution, workspace size, windows
-
-Examples:
-
-# List out X11 information
-winctl info
-"))
-
-        // List out all the windows
-        .subcommand(SubCommand::with_name("list").about("List out windows")
-            .long_about(r"List out windows
-
-Examples:
-
-# List out windows
-winctl list
-
-# List out all X windows
-winctl list -a
-")
-        .arg(Arg::with_name("all").short("a").long("all").takes_value(false).help("Show all X windows not just WM windows"))
-        )
-
-        // Move
-        .subcommand(SubCommand::with_name("move").about("Move the active window")
-            .long_about(r"Move the active window
-
-Examples:
-
-# Move the active window to the center
-winctl move center
-
-# Move the active window to the right edge of the screen
-winctl move right
-
-# Move the active window to the bottom center of the screen
-winctl move bottom-center
-")
-            .arg(Arg::with_name("POSITION").index(1).required(true)
-                .value_names(&["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-right", "bottom-left", "left-center", "right-center", "top-center", "bottom-center"])
-                .help("position to move the active window to"))
-        )
-
-        // Place
-        .subcommand(SubCommand::with_name("place").about("Shape and move the window")
-            .long_about(r"Shape and move the window
-
-Examples:
-
-# Shape the active window to half the width but full height and position to the right
-winctl shape halfw right
-
-# Shape the active window to be small and position bottom left
-winctl shape small bottom-left
-")
-            .arg(Arg::with_name("SHAPE").index(1).required(true)
-                .value_names(&["halfh", "halfw", "small", "medium", "large", "grow", "max", "shrink", "unmax"])
-                .help("shape directive to use against the window"))
-            .arg(Arg::with_name("POSITION").index(2).required(true)
-                .value_names(&["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-right", "bottom-left", "left-center", "right-center", "top-center", "bottom-center"])
-                .help("position to move the window to"))
-        )
-
-        // Shape
-        .subcommand(SubCommand::with_name("shape").about("Shape the window")
-            .long_about(r"Shape the window
-
-Examples:
-
-# Grow the active window by 10% on all sides
-winctl shape grow
-
-# Shrink the active window by 10% on all sides
-winctl shape shrink
-
-# Shape the active window to be large i.e. 4x3 ~50% of the current screen size
-winctl shape medium
-
-# Shape the active window to be large i.e. 4x3 ~90% of the current screen size
-winctl shape large
-")
-            .arg(Arg::with_name("SHAPE").index(1).required(true)
-                .value_names(&["halfh", "halfw", "small", "medium", "large", "grow", "max", "shrink", "unmax"])
-                .help("shape directive to use against the window"))
-        )
-
-        // Static
-        .subcommand(SubCommand::with_name("static").about("Resize and move the window")
-            .long_about(r"Resize and move the window statically
-
-Examples:
-
-# w and h are static values of the size of the window
-winctl resize 1276 757
-
-# w and h are static values of the size of the window and x, y are the intended location
-winctl resize 1276 757 0 0
-")
-            .arg(Arg::with_name("WIDTH").index(1).required(true).help("width of the window"))
-            .arg(Arg::with_name("HEIGHT").index(2).required(true).help("height of the window"))
-            .arg(Arg::with_name("X").index(3).required(false).help("x location of the window"))
-            .arg(Arg::with_name("Y").index(4).required(false).help("y location of the window"))
-        )
-        .get_matches_from_safe(env::args_os()).pass()?;
-
-    // Execute
-    // ---------------------------------------------------------------------------------------------
-    init_logging(match matches.is_present("debug") {
-        true => Some(Level::DEBUG),
-        _ => None,
-    });
-
-    // Determine the target window
-    let win = { matches.value_of("window").and_then(|x| x.parse::<u32>().ok()) };
-
-    // Version
-    if let Some(ref _matches) = matches.subcommand_matches("version") {
-        println!("{}: {}", APP_NAME.cyan(), APP_DESCRIPTION.cyan());
-        println!("{}", "--------------------------------------------------------".cyan());
-        println!("{:<w$} {}", "Version:", APP_VERSION, w = 18);
-        println!("{:<w$} {}", "Build Date:", APP_BUILD_DATE, w = 18);
-        println!("{:<w$} {}", "Git Commit:", APP_GIT_COMMIT, w = 18);
-
-    // info
-    } else if let Some(_) = matches.subcommand_matches("info") {
-        libewmh::info(win).pass()?;
-
-    // list
-    } else if let Some(matches) = matches.subcommand_matches("list") {
-        libewmh::list(matches.is_present("all")).pass()?;
-
-    // move
-    } else if let Some(ref matches) = matches.subcommand_matches("move") {
-        let pos = WinPosition::try_from(matches.value_of("POSITION").unwrap()).pass()?;
-        WinOpt::new(win).pos(pos).place().pass()?;
-
-    // place
-    } else if let Some(ref matches) = matches.subcommand_matches("place") {
-        let shape = WinShape::try_from(matches.value_of("SHAPE").unwrap()).pass()?;
-        let pos = WinPosition::try_from(matches.value_of("POSITION").unwrap()).pass()?;
-        WinOpt::new(win).shape(shape).pos(pos).place().pass()?;
-
-    // static
-    } else if let Some(ref matches) = matches.subcommand_matches("static") {
-        let w = matches.value_of("WIDTH").unwrap().parse::<u32>().pass()?;
-        let h = matches.value_of("HEIGHT").unwrap().parse::<u32>().pass()?;
-        let mut win = WinOpt::new(win).size(w, h);
-        if matches.value_of("X").is_some() && matches.value_of("Y").is_some() {
-            let x = matches.value_of("X").unwrap().parse::<u32>().pass()?;
-            let y = matches.value_of("Y").unwrap().parse::<u32>().pass()?;
-            win = win.location(x, y);
-        }
-        win.place().pass()?;
-
-    // shape
-    } else if let Some(ref matches) = matches.subcommand_matches("shape") {
-        let shape = WinShape::try_from(matches.value_of("SHAPE").unwrap()).pass()?;
-        WinOpt::new(win).shape(shape).place().pass()?;
-    }
-
-    Ok(())
-}
-
-#[doc(hidden)]
 fn main() {
-    match init() {
-        Ok(_) => 0,
-        Err(err) => {
-            match err.downcast_ref::<clap::Error>() {
-                Some(clap) => println!("{}", clap),
-                None => println!("{:?}", err),
-            };
-            1
+    let _ = match cli().get_matches().subcommand() {
+        Some(("window", sub)) => match sub.subcommand() {
+            Some(("list", _)) => libewmh::list(false),
+            Some(("move", _)) => WinOpt::new(None).pos(libewmh::WinPosition::Bottom).place(),
+            _ => unreachable!(),
         },
+        _ => unreachable!(),
     };
 }
+
+// fn foo() {
+//     // Determine the target window
+//     let win = { matches.value_of("window").and_then(|x| x.parse::<u32>().ok()) };
+
+//     // info
+//     else if let Some(_) = matches.subcommand_matches("info") {
+//         libewmh::info(win).pass()?;
+
+//     // list
+//     } else if let Some(matches) = matches.subcommand_matches("list") {
+//         libewmh::list(matches.is_present("all")).pass()?;
+
+//     // move
+//     } else if let Some(ref matches) = matches.subcommand_matches("move") {
+//         let pos = WinPosition::try_from(matches.value_of("POSITION").unwrap()).pass()?;
+//         WinOpt::new(win).pos(pos).place().pass()?;
+
+//     // place
+//     } else if let Some(ref matches) = matches.subcommand_matches("place") {
+//         let shape = WinShape::try_from(matches.value_of("SHAPE").unwrap()).pass()?;
+//         let pos = WinPosition::try_from(matches.value_of("POSITION").unwrap()).pass()?;
+//         WinOpt::new(win).shape(shape).pos(pos).place().pass()?;
+
+//     // static
+//     } else if let Some(ref matches) = matches.subcommand_matches("static") {
+//         let w = matches.value_of("WIDTH").unwrap().parse::<u32>().pass()?;
+//         let h = matches.value_of("HEIGHT").unwrap().parse::<u32>().pass()?;
+//         let mut win = WinOpt::new(win).size(w, h);
+//         if matches.value_of("X").is_some() && matches.value_of("Y").is_some() {
+//             let x = matches.value_of("X").unwrap().parse::<u32>().pass()?;
+//             let y = matches.value_of("Y").unwrap().parse::<u32>().pass()?;
+//             win = win.location(x, y);
+//         }
+//         win.place().pass()?;
+
+//     // shape
+//     } else if let Some(ref matches) = matches.subcommand_matches("shape") {
+//         let shape = WinShape::try_from(matches.value_of("SHAPE").unwrap()).pass()?;
+//         WinOpt::new(win).shape(shape).place().pass()?;
+//     }
+// }

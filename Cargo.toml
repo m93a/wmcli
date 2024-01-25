@@ -3,7 +3,7 @@ members = ["libewmh"]
 
 [package]
 name = "wmcli"
-version = "0.0.47"
+version = "0.1.0"
 edition = "2021"
 authors = ["m93a", "phR0ze"]
 license = "MIT OR Apache-2.0"
@@ -39,9 +39,8 @@ libewmh = { version = "0.0.1", path = "./libewmh" }
 tracing-subscriber = "0.3"
 
 [dependencies.clap]
-version = "2.33"
-default-features = false
-features = ["suggestions"]
+version = "4.4.18"
+features = ["cargo"]
 
 # Tests, examples and build.rs are built with these dependencies
 [build-dependencies]
