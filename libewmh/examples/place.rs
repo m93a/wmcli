@@ -1,4 +1,4 @@
-use libewmh::prelude::*;
+use libewmh::{prelude::*, window::WinOpt};
 
 // Resize and move the active window
 fn main() {

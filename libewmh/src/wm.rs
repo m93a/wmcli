@@ -11,106 +11,19 @@
 //! `wmcli` uses `WindowManager` with pre-defined shapes and positions to manipulate how a window should
 //! be shaped and positioned on the screen in an ergonomic way; however `WindowManager` could be used
 //! for a variety of reasons.
-use crate::{model::*, WindowManagerError, WindowManagerResult};
+use crate::{
+    atoms::AtomCollection, model::*, window::Window, ErrorWrapper, WindowManagerError, WindowManagerResult,
+};
 use std::{collections::HashMap, str, sync::Arc};
 use tracing::{debug, trace};
 
 use x11rb::{
-    atom_manager,
     connection::Connection,
-    protocol::xproto::{self, ConnectionExt as _, *},
+    protocol::xproto::{
+        self, Atom, AtomEnum, ClientMessageEvent, ConnectionExt as _, EventMask, GetPropertyReply,
+    },
     rust_connection::RustConnection,
 };
-
-// A collection of the atoms we will need.
-atom_manager! {
-    pub AtomCollection: AtomCollectionCookie {
-        _NET_ACTIVE_WINDOW,
-        _NET_CLIENT_LIST,
-        _NET_CLIENT_LIST_STACKING,
-        _NET_CLOSE_WINDOW,
-        _NET_CURRENT_DESKTOP,
-        _NET_DESKTOP_GEOMETRY,
-        _NET_DESKTOP_LAYOUT,
-        _NET_DESKTOP_NAMES,
-        _NET_DESKTOP_VIEWPORT,
-        _NET_FRAME_EXTENTS,
-        _NET_MOVERESIZE_WINDOW,
-        _NET_NUMBER_OF_DESKTOPS,
-        _NET_REQUEST_FRAME_EXTENTS,
-        _NET_SHOWING_DESKTOP,
-        _NET_SUPPORTED,
-        _NET_SUPPORTING_WM_CHECK,
-        _NET_SYSTEM_TRAY_OPCODE,
-        _NET_WM_ACTION_ABOVE,
-        _NET_WM_ACTION_BELOW,
-        _NET_WM_ACTION_CHANGE_DESKTOP,
-        _NET_WM_ACTION_CLOSE,
-        _NET_WM_ACTION_FULLSCREEN,
-        _NET_WM_ACTION_MAXIMIZE_HORZ,
-        _NET_WM_ACTION_MAXIMIZE_VERT,
-        _NET_WM_ACTION_MINIMIZE,
-        _NET_WM_ACTION_MOVE,
-        _NET_WM_ACTION_RESIZE,
-        _NET_WM_ACTION_SHADE,
-        _NET_WM_ACTION_STICK,
-        _NET_WM_ALLOWED_ACTIONS,
-        _NET_WM_BYPASS_COMPOSITOR,
-        _NET_WM_CONTEXT_HELP,
-        _NET_WM_DESKTOP,
-        _NET_WM_FULLSCREEN_MONITORS,
-        _NET_WM_HANDLED_ICONS,
-        _NET_WM_ICON,
-        _NET_WM_ICON_GEOMETRY,
-        _NET_WM_ICON_NAME,
-        _NET_WM_MOVERESIZE,
-        _NET_WM_NAME,
-        _NET_WM_OPAQUE_REGION,
-        _NET_WM_PID,
-        _NET_WM_PING,
-        _NET_WM_WINDOW_OPACITY,
-        _NET_WM_WINDOW_OPACITY_LOCKED,
-        _NET_WM_STATE,
-        _NET_WM_STATE_ABOVE,
-        _NET_WM_STATE_BELOW,
-        _NET_WM_STATE_DEMANDS_ATTENTION,
-        _NET_WM_STATE_FOCUSED,
-        _NET_WM_STATE_FULLSCREEN,
-        _NET_WM_STATE_HIDDEN,
-        _NET_WM_STATE_MAXIMIZED_VERT,
-        _NET_WM_STATE_MAXIMIZED_HORZ,
-        _NET_WM_STATE_MODAL,
-        _NET_WM_STATE_SHADED,
-        _NET_WM_STATE_SKIP_PAGER,
-        _NET_WM_STATE_SKIP_TASKBAR,
-        _NET_WM_STATE_STICKY,
-        _NET_WM_STRUT,
-        _NET_WM_STRUT_PARTIAL,
-        _NET_WM_SYNC_REQUEST,
-        _NET_WM_SYNC_REQUEST_COUNTER,
-        _NET_WM_USER_TIME,
-        _NET_WM_USER_TIME_WINDOW,
-        _NET_WM_VISIBLE_NAME,
-        _NET_WM_VISIBLE_ICON_NAME,
-        _NET_WM_WINDOW_TYPE,
-        _NET_WM_WINDOW_TYPE_COMBO,
-        _NET_WM_WINDOW_TYPE_DESKTOP,
-        _NET_WM_WINDOW_TYPE_DIALOG,
-        _NET_WM_WINDOW_TYPE_DND,
-        _NET_WM_WINDOW_TYPE_DOCK,
-        _NET_WM_WINDOW_TYPE_DROPDOWN_MENU,
-        _NET_WM_WINDOW_TYPE_MENU,
-        _NET_WM_WINDOW_TYPE_NORMAL,
-        _NET_WM_WINDOW_TYPE_NOTIFICATION,
-        _NET_WM_WINDOW_TYPE_POPUP_MENU,
-        _NET_WM_WINDOW_TYPE_SPLASH,
-        _NET_WM_WINDOW_TYPE_TOOLBAR,
-        _NET_WM_WINDOW_TYPE_TOOLTIP,
-        _NET_WM_WINDOW_TYPE_UTILITY,
-        _NET_WORKAREA,
-        UTF8_STRING,
-    }
-}
 
 // Define the second byte of the move resize flags 32bit value
 // Used to indicate that the associated value has been changed and needs to be acted upon
@@ -130,22 +43,34 @@ pub struct WindowManager {
     conn: Arc<RustConnection>,     // x11 connection
     pub atoms: AtomCollection,     // atom cache
     supported: HashMap<u32, bool>, // cache for supported functions
-    pub(crate) screen: usize,      // screen number
-    pub(crate) root: u32,          // root window id
-    pub(crate) width: u32,         // screen width
-    pub(crate) height: u32,        // screen height
-    pub(crate) work_width: u32,    // screen height
-    pub(crate) work_height: u32,   // screen height
+    screen: usize,                 // screen number
+    root: u32,                     // root window id
+    width: u32,                    // screen width
+    height: u32,                   // screen height
+    work_width: u32,               // screen height
+    work_height: u32,              // screen height
+}
+
+pub struct GetPropertyResult {
+    boxed: WindowManagerResult<GetPropertyReply>,
+}
+
+impl TryInto<u32> for GetPropertyResult {
+    type Error = ErrorWrapper;
+    fn try_into(self) -> WindowManagerResult<u32> {
+        self.boxed?.value32().and_then(|mut x| x.next()).ok_or(WindowManagerError::PropertyNotFound.into())
+    }
+}
+
+impl TryInto<i32> for GetPropertyResult {
+    type Error = ErrorWrapper;
+    fn try_into(self) -> WindowManagerResult<i32> {
+        Ok(TryInto::<u32>::try_into(self)? as i32)
+    }
 }
 
 impl WindowManager {
     /// Create the window manager control instance and connect to the X11 server
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = Wmcli::connect().unwrap();
-    /// ```
     pub fn connect() -> WindowManagerResult<Self> {
         let (conn, screen) = x11rb::connect(None)?;
 
@@ -180,78 +105,6 @@ impl WindowManager {
         Ok(wmcli)
     }
 
-    /// Get the default screen number
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// wmcli.screen();
-    /// ```
-    pub fn screen(&self) -> usize {
-        self.screen
-    }
-
-    /// Get the root window
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// wmcli.root();
-    /// ```
-    pub fn root(&self) -> u32 {
-        self.root
-    }
-
-    /// Get the screen full width
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// wmcli.width();
-    /// ```
-    pub fn width(&self) -> u32 {
-        self.width
-    }
-
-    /// Get screen full height
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// wmcli.height();
-    /// ```
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-
-    /// Get screen work width which is the full width minus any taskbars
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// wmcli.work_width();
-    /// ```
-    pub fn work_width(&self) -> u32 {
-        self.work_width
-    }
-
-    /// Get screen work height which is the full width minus any taskbars
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// wmcli.work_height();
-    /// ```
-    pub fn work_height(&self) -> u32 {
-        self.work_height
-    }
-
     fn init_caching(
         conn: &RustConnection, root: u32,
     ) -> WindowManagerResult<(AtomCollection, HashMap<u32, bool>)> {
@@ -263,7 +116,7 @@ impl WindowManager {
         // Cache supported functions
         let mut supported = HashMap::<u32, bool>::new();
         let reply = conn.get_property(false, root, atoms._NET_SUPPORTED, AtomEnum::ATOM, 0, u32::MAX)?.reply()?;
-        for atom in reply.value32().ok_or(WindowManagerError::PropertyNotFound("_NET_SUPPORTED".to_owned()))? {
+        for atom in reply.value32().ok_or(WindowManagerError::PropertyNotFound)? {
             trace!("supported: {}", atom);
             supported.insert(atom, true);
         }
@@ -271,39 +124,61 @@ impl WindowManager {
         Ok((atoms, supported))
     }
 
+    /// Get the default screen number
+    pub fn screen(&self) -> usize {
+        self.screen
+    }
+
+    /// Get the root window
+    pub fn root(&self) -> u32 {
+        self.root
+    }
+
+    /// Get the screen full width
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    /// Get screen full height
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    /// Get screen work width which is the full width minus any taskbars
+    pub fn work_width(&self) -> u32 {
+        self.work_width
+    }
+
+    /// Get screen work height which is the full width minus any taskbars
+    pub fn work_height(&self) -> u32 {
+        self.work_height
+    }
+
+    fn _get_window_property<A: Into<Atom>, B: Into<Atom>>(
+        &self, window_id: u32, property: A, type_: B,
+    ) -> Result<GetPropertyReply, ErrorWrapper> {
+        Ok(self.conn.get_property(false, window_id, property, type_, 0, u32::MAX)?.reply()?)
+    }
+
+    pub fn get_window_property<A: Into<Atom>, B: Into<Atom>>(
+        &self, window_id: u32, property: A, type_: B,
+    ) -> GetPropertyResult {
+        GetPropertyResult {
+            boxed: self._get_window_property(window_id, property, type_),
+        }
+    }
+
+    pub fn get_root_property<A: Into<Atom>, B: Into<Atom>>(&self, property: A, type_: B) -> GetPropertyResult {
+        self.get_window_property(self.root, property, type_)
+    }
+
     /// Get the active window id
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// wmcli.active_win().unwrap();
-    /// ```
     pub fn active_win(&self) -> WindowManagerResult<u32> {
         // Defined as: _NET_ACTIVE_WINDOW, WINDOW/32
-        // which means when retrieving the value via `get_property` that we need to use a `self.atoms._NET_ACTIVE_WINDOW`
-        // request message with a `AtomEnum::WINDOW` type response and we can use the `reply.value32()` accessor to
-        // retrieve the value.
-        let reply = self
-            .conn
-            .get_property(false, self.root, self.atoms._NET_ACTIVE_WINDOW, AtomEnum::WINDOW, 0, u32::MAX)?
-            .reply()?;
-        let win = reply
-            .value32()
-            .and_then(|mut x| x.next())
-            .ok_or(WindowManagerError::PropertyNotFound("_NET_ACTIVE_WINDOW".to_owned()))?;
-        debug!("active_win: {}", win);
-        Ok(win)
+        self.get_root_property(self.atoms._NET_ACTIVE_WINDOW, AtomEnum::WINDOW).try_into()
     }
 
     /// Check if a composit manager is running
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// wmcli.composite_manager().unwrap();
-    /// ```
     pub fn composite_manager(&self) -> WindowManagerResult<bool> {
         // Defined as: _NET_WM_CM_Sn
         // For each screen the compositing manager manages they MUST acquire ownership of a
@@ -317,28 +192,9 @@ impl WindowManager {
     }
 
     /// Get number of desktops
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// wmcli.desktops().unwrap();
-    /// ```
     pub fn desktops(&self) -> WindowManagerResult<u32> {
         // Defined as: _NET_NUMBER_OF_DESKTOPS, CARDINAL/32
-        // which means when retrieving the value via `get_property` that we need to use a `self.atoms._NET_NUMBER_OF_DESKTOPS`
-        // request message with a `AtomEnum::CARDINAL` type response and we can use the `reply.value32()` accessor to
-        // retrieve the value.
-        let reply = self
-            .conn
-            .get_property(false, self.root, self.atoms._NET_NUMBER_OF_DESKTOPS, AtomEnum::CARDINAL, 0, u32::MAX)?
-            .reply()?;
-        let num = reply
-            .value32()
-            .and_then(|mut x| x.next())
-            .ok_or(WindowManagerError::PropertyNotFound("_NET_NUMBER_OF_DESKTOPS".to_owned()))?;
-        debug!("desktops: {}", num);
-        Ok(num)
+        self.get_root_property(self.atoms._NET_NUMBER_OF_DESKTOPS, AtomEnum::CARDINAL).try_into()
     }
 
     /// Maximize the window both horizontally and vertiacally
@@ -512,13 +368,13 @@ impl WindowManager {
     /// let wmcli = wmcli::connect().unwrap();
     /// wmcli.windows(false).unwrap();
     /// ```
-    pub fn windows(&self, all: bool) -> WindowManagerResult<Vec<u32>> {
+    pub fn get_windows(&self, all: bool) -> WindowManagerResult<Vec<Window>> {
         let mut windows = vec![];
         if all {
             // All windows in the X11 system
             let tree = self.conn.query_tree(self.root)?.reply()?;
             for win in tree.children {
-                windows.push(win);
+                windows.push(Window { id: win });
             }
         } else {
             // Window manager client windows which is a subset of all windows that have been
@@ -527,34 +383,17 @@ impl WindowManager {
                 .conn
                 .get_property(false, self.root, self.atoms._NET_CLIENT_LIST, AtomEnum::WINDOW, 0, u32::MAX)?
                 .reply()?;
-            for win in
-                reply.value32().ok_or(WindowManagerError::PropertyNotFound("_NET_CLIENT_LIST".to_owned()))?
-            {
-                windows.push(win)
+            for win in reply.value32().ok_or(WindowManagerError::PropertyNotFound)? {
+                windows.push(Window { id: win })
             }
         }
         Ok(windows)
     }
 
     /// Get window manager's window id and name
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// let (id, name) = wmcli.winmgr().unwrap();
-    /// ```
     pub fn winmgr(&self) -> WindowManagerResult<(u32, String)> {
-        let reply = self
-            .conn
-            .get_property(false, self.root, self.atoms._NET_SUPPORTING_WM_CHECK, AtomEnum::WINDOW, 0, u32::MAX)?
-            .reply()?;
-        let win = reply
-            .value32()
-            .and_then(|mut x| x.next())
-            .ok_or(WindowManagerError::PropertyNotFound("_NET_SUPPORTING_WM_CHECK".to_owned()))?;
+        let win: u32 = self.get_root_property(self.atoms._NET_SUPPORTING_WM_CHECK, AtomEnum::WINDOW).try_into()?;
         let name = self.win_name(win)?;
-        debug!("winmgr: id: {}, name: {}", win, name);
         Ok((win, name))
     }
 
@@ -575,12 +414,11 @@ impl WindowManager {
             .conn
             .get_property(false, self.root, self.atoms._NET_WORKAREA, AtomEnum::CARDINAL, 0, u32::MAX)?
             .reply()?;
-        let mut values =
-            reply.value32().ok_or(WindowManagerError::PropertyNotFound("_NET_WORKAREA".to_owned()))?;
-        let x = values.next().ok_or(WindowManagerError::PropertyNotFound("_NET_WORKAREA x".to_owned()))?;
-        let y = values.next().ok_or(WindowManagerError::PropertyNotFound("_NET_WORKAREA y".to_owned()))?;
-        let w = values.next().ok_or(WindowManagerError::PropertyNotFound("_NET_WORKAREA width".to_owned()))?;
-        let h = values.next().ok_or(WindowManagerError::PropertyNotFound("_NET_WORKAREA height".to_owned()))?;
+        let mut values = reply.value32().ok_or(WindowManagerError::PropertyNotFound)?;
+        let x = values.next().ok_or(WindowManagerError::PropertyNotFound)?;
+        let y = values.next().ok_or(WindowManagerError::PropertyNotFound)?;
+        let w = values.next().ok_or(WindowManagerError::PropertyNotFound)?;
+        let h = values.next().ok_or(WindowManagerError::PropertyNotFound)?;
         debug!("work_area: x: {}, y: {}, w: {}, h: {}", x, y, w, h);
 
         // x and y are always zero so dropping them
@@ -636,28 +474,11 @@ impl WindowManager {
     ///
     /// ### Arguments
     /// * `win` - id of the window to manipulate
-    ///
-    /// ### Examples
-    /// ```ignore
-    /// use libewmh::prelude::*;
-    /// let wmcli = wmcli::connect().unwrap();
-    /// let desktop = wmcli.win_desktop(12345).unwrap();
     /// ```
     pub fn win_desktop(&self, win: xproto::Window) -> WindowManagerResult<i32> {
         // Defined as: _NET_WM_DESKTOP desktop, CARDINAL/32
-        // which means when retrieving the value via `get_property` that we need to use a `self.atoms._NET_WM_DESKTOP`
-        // request message with a `AtomEnum::CARDINAL` type response and we can use the `reply.value32()` accessor to
-        // retrieve the values of which there will be a single value.
-        let reply = self
-            .conn
-            .get_property(false, win, self.atoms._NET_WM_DESKTOP, AtomEnum::CARDINAL, 0, u32::MAX)?
-            .reply()?;
-        let desktop = reply
-            .value32()
-            .and_then(|mut x| x.next())
-            .ok_or(WindowManagerError::PropertyNotFound("_NET_WM_DESKTOP".to_owned()))?;
-        debug!("win_desktop: id: {}, desktop: {}", win, desktop);
-        Ok(desktop as i32)
+        // FIXME why i32?!!
+        self.get_window_property(win, self.atoms._NET_WM_DESKTOP, AtomEnum::CARDINAL).try_into()
     }
 
     /// Get window frame border values added by the window manager
@@ -680,14 +501,11 @@ impl WindowManager {
             .conn
             .get_property(false, win, self.atoms._NET_FRAME_EXTENTS, AtomEnum::CARDINAL, 0, u32::MAX)?
             .reply()?;
-        let mut values =
-            reply.value32().ok_or(WindowManagerError::PropertyNotFound("_NET_FRAME_EXTENTS".to_owned()))?;
-        let l = values.next().ok_or(WindowManagerError::PropertyNotFound("_NET_FRAME_EXTENTS left".to_owned()))?;
-        let r =
-            values.next().ok_or(WindowManagerError::PropertyNotFound("_NET_FRAME_EXTENTS right".to_owned()))?;
-        let t = values.next().ok_or(WindowManagerError::PropertyNotFound("_NET_FRAME_EXTENTS top".to_owned()))?;
-        let b =
-            values.next().ok_or(WindowManagerError::PropertyNotFound("_NET_FRAME_EXTENTS bottom".to_owned()))?;
+        let mut values = reply.value32().ok_or(WindowManagerError::PropertyNotFound)?;
+        let l = values.next().ok_or(WindowManagerError::PropertyNotFound)?;
+        let r = values.next().ok_or(WindowManagerError::PropertyNotFound)?;
+        let t = values.next().ok_or(WindowManagerError::PropertyNotFound)?;
+        let b = values.next().ok_or(WindowManagerError::PropertyNotFound)?;
         debug!("win_borders: id: {}, l: {}, r: {}, t: {}, b: {}", win, l, r, t, b);
         Ok((l, r, t, b))
     }
@@ -777,7 +595,7 @@ impl WindowManager {
         }
 
         // No valid name was found
-        Err(WindowManagerError::PropertyNotFound("_NET_WM_NAME | _WM_NAME".to_owned()).into())
+        Err(WindowManagerError::PropertyNotFound.into())
     }
 
     /// Get window parent
@@ -812,19 +630,7 @@ impl WindowManager {
     /// ```
     pub fn win_pid(&self, win: xproto::Window) -> WindowManagerResult<i32> {
         // Defined as: _NET_WM_PID, CARDINAL/32
-        // which means when retrieving the value via `get_property` that we need to use a `self.atoms._NET_WM_PID`
-        // request message with a `AtomEnum::CARDINAL` type response and we can use the `reply.value32()` accessor to
-        // retrieve the values of which there will be a single value.
-        let reply = self
-            .conn
-            .get_property(false, win, self.atoms._NET_WM_PID, AtomEnum::CARDINAL, 0, u32::MAX)?
-            .reply()?;
-        let pid = reply
-            .value32()
-            .and_then(|mut x| x.next())
-            .ok_or(WindowManagerError::PropertyNotFound("_NET_WM_PID".to_owned()))?;
-        debug!("win_pid: id: {}, pid: {:?}", win, pid);
-        Ok(pid as i32)
+        self.get_window_property(win, self.atoms._NET_WM_PID, AtomEnum::CARDINAL).try_into()
     }
 
     /// Get window state
@@ -846,7 +652,7 @@ impl WindowManager {
         let mut states = vec![];
         let reply =
             self.conn.get_property(false, win, self.atoms._NET_WM_STATE, AtomEnum::ATOM, 0, u32::MAX)?.reply()?;
-        for state in reply.value32().ok_or(WindowManagerError::PropertyNotFound("_NET_WM_STATE".to_owned()))? {
+        for state in reply.value32().ok_or(WindowManagerError::PropertyNotFound)? {
             let state = WinState::from(&self.atoms, state);
             debug!("win_state: id: {}, state: {}", win, state);
             states.push(state);
@@ -870,17 +676,10 @@ impl WindowManager {
         // which means when retrieving the value via `get_property` that we need to use a `self.atoms._NET_WM_WINDOW_TYPE`
         // request message with a `AtomEnum::ATOM` type response and we can use the `reply.value32()` accessor to
         // retrieve the value.
-        let reply = self
-            .conn
-            .get_property(false, win, self.atoms._NET_WM_WINDOW_TYPE, AtomEnum::ATOM, 0, u32::MAX)?
-            .reply()?;
-        let typ = reply
-            .value32()
-            .and_then(|mut x| x.next())
-            .ok_or(WindowManagerError::PropertyNotFound("_NET_WM_WINDOW_TYPE".to_owned()))?;
-        let typ = WinType::from(&self.atoms, typ);
-        debug!("win_type: id: {}, type: {:?}", win, typ);
-        Ok(typ)
+        Ok(WinType::from(
+            &self.atoms,
+            self.get_window_property(win, self.atoms._NET_WM_WINDOW_TYPE, AtomEnum::ATOM).try_into()?,
+        ))
     }
 
     // Helper method to print out the data type

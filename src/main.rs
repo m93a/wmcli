@@ -28,7 +28,7 @@
 use std::env;
 
 use clap::{crate_description, crate_version, Command};
-use libewmh::WinOpt;
+use libewmh::{window::WinOpt, WindowManager, WindowManagerError, WindowManagerResult};
 
 fn cli() -> Command {
     Command::new("wmcli")
@@ -62,12 +62,21 @@ fn cli() -> Command {
 fn main() {
     let _ = match cli().get_matches().subcommand() {
         Some(("window", sub)) => match sub.subcommand() {
-            Some(("list", _)) => libewmh::list(false),
+            Some(("list", _)) => libewmh::window::list(false),
             Some(("move", _)) => WinOpt::new(None).pos(libewmh::WinPosition::Bottom).place(),
             _ => unreachable!(),
         },
         _ => unreachable!(),
     };
+}
+
+fn list_windows() -> WindowManagerResult<()> {
+    let wmcli = WindowManager::connect()?;
+
+    for win in wmcli.get_windows(false)? {
+        print_win_details(&wmcli, win)?;
+    }
+    Ok(())
 }
 
 // fn foo() {

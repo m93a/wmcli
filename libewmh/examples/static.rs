@@ -1,4 +1,4 @@
-use libewmh::prelude::*;
+use libewmh::window::WinOpt;
 
 // Explicit resize of the active window
 fn main() {

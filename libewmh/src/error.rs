@@ -16,7 +16,7 @@ pub enum WindowManagerError {
     InvalidWinMap(u32),
     InvalidWinState(u32),
     InvalidWinType(u32),
-    PropertyNotFound(String),
+    PropertyNotFound,
     TaskbarNotFound,
     TaskbarReservationNotFound,
 }
@@ -33,7 +33,7 @@ impl fmt::Display for WindowManagerError {
             WindowManagerError::InvalidWinMap(ref err) => write!(f, "invalid map was given: {}", err),
             WindowManagerError::InvalidWinState(ref err) => write!(f, "invalid state was given: {}", err),
             WindowManagerError::InvalidWinType(ref err) => write!(f, "invalid type was given: {}", err),
-            WindowManagerError::PropertyNotFound(ref err) => write!(f, "property {} was not found", err),
+            WindowManagerError::PropertyNotFound => write!(f, "an x11 property was not found"),
             WindowManagerError::TaskbarNotFound => write!(f, "taskbar not found"),
             WindowManagerError::TaskbarReservationNotFound => write!(f, "taskbar reservation not found"),
         }

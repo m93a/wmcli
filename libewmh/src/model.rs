@@ -2,7 +2,7 @@ use std::{convert, fmt};
 
 use x11rb::protocol::xproto;
 
-use crate::{wm::AtomCollection, WindowManagerError, WindowManagerResult};
+use crate::{atoms::AtomCollection, WindowManagerError, WindowManagerResult};
 
 /// WinGravity
 /// Gravity is defined as the lower byte of the move resize flags 32bit value
